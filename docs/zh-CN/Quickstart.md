@@ -7,8 +7,8 @@
 ### 安装
 
 ```bash
-git clone https://github.com/open-compass/VLMEvalKit.git
-cd VLMEvalKit
+git clone https://github.com/open-compass/SciEvalKit.git
+cd SciEvalKit
 pip install -e .
 ```
 
@@ -18,10 +18,10 @@ pip install -e .
 
 > **注意：** 部分数据集需要使用 LLM 作为评判者（Judge）并且设置了默认的评测模型（详见 *额外说明*），进行这些数据集的评测的时候也需要配置好相应的 API。
 
-你可以将所需的密钥放在 `$VLMEvalKit/.env` 中，或直接将它们设置为环境变量。如果你选择创建 `.env` 文件，其内容参考如下：
+你可以将所需的密钥放在 `$SciEvalKit/.env` 中，或直接将它们设置为环境变量。如果你选择创建 `.env` 文件，其内容参考如下：
 
 ```bash
-# .env 文件，将其放置在 $VLMEvalKit 下
+# .env 文件，将其放置在 $SciEvalKit 下
 
 # --- 专有 VLMs 的 API 密钥 ---
 # QwenVL APIs
@@ -62,9 +62,9 @@ OPENAI_API_BASE_EVAL=
 
 ## 第 1 步：配置
 
-**VLM 配置：** 所有 VLMs 都在 `vlmeval/config.py` 中配置。对于某些 VLMs（如 MiniGPT-4、LLaVA-v1-7B），需要额外的配置（在配置文件中配置代码 / 模型权重根目录）。
+**VLM 配置：** 所有 VLMs 都在 `scieval/config.py` 中配置。对于某些 VLMs（如 MiniGPT-4、LLaVA-v1-7B），需要额外的配置（在配置文件中配置代码 / 模型权重根目录）。
 
-在评估时，你应该使用 `vlmeval/config.py` 中 `supported_VLM` 指定的模型名称来选择 VLM。确保在开始评估之前，你可以成功使用 VLM 进行推理。
+在评估时，你应该使用 `scieval/config.py` 中 `supported_VLM` 指定的模型名称来选择 VLM。确保在开始评估之前，你可以成功使用 VLM 进行推理。
 
 **检查命令：**
 
@@ -76,12 +76,12 @@ vlmutil check {MODEL_NAME}
 
 ## 第 2 步：评测
 
-我们使用 `run.py` 进行评估。你可以使用 `$VLMEvalKit/run.py` 或创建脚本的软链接运行（以便在任何地方使用该脚本）。
+我们使用 `run.py` 进行评估。你可以使用 `$SciEvalKit/run.py` 或创建脚本的软链接运行（以便在任何地方使用该脚本）。
 
 ### 基本参数
 
-*   `--data` (list[str]): 设置在 VLMEvalKit 中支持的数据集名称（详见 `vlmeval/dataset/__init__.py` 或使用 `vlmutil dlist all` 查看）。
-*   `--model` (list[str]): 设置在 VLMEvalKit 中支持的 VLM 名称（在 `vlmeval/config.py` 中的 `supported_VLM` 中定义）。
+*   `--data` (list[str]): 设置在 SciEvalKit 中支持的数据集名称（详见 `scieval/dataset/__init__.py` 或使用 `vlmutil dlist all` 查看）。
+*   `--model` (list[str]): 设置在 SciEvalKit 中支持的 VLM 名称（在 `scieval/config.py` 中的 `supported_VLM` 中定义）。
 *   `--mode` (str, 默认 `'all'`): 运行模式，可选值为 `['all', 'infer', 'eval']`。
     *   `"all"`: 执行推理和评估。
     *   `"infer"`: 只执行推理。
@@ -143,7 +143,7 @@ python run.py --config config.json
 
 *   `--judge` (str): 针对于评估阶段需要用到模型进行评估的数据集，设置评估模型。
     *   不指定则会使用配置好的默认模型。
-    *   模型可以是 VLMEvalKit 中支持的 VLM 名称，也可以指定自定义模型。
+    *   模型可以是 SciEvalKit 中支持的 VLM 名称，也可以指定自定义模型。
 *   `--judge-args` (str): 设置评测时需要用到的参数（JSON 字符串格式）。
     *   当通过 `--judge` 指定评测模型时，可以传入如 `temperature`, `max_tokens` 等参数。
     *   具体参数视模型初始化的类决定（例如 `scieval.api.gpt.OpenAIWrapper`）。
@@ -210,7 +210,7 @@ python run.py --config config.json
 
 如果您在评测某个 benchmark 时，发现模型输出的结果与预期不符，可能是因为您使用的模型没有正确构建输入 prompt。
 
-在 VLMEvalKit 中，每个 dataset 类都包含一个名为 `build_prompt()` 的函数，用于构建输入问题的格式。不同的 benchmark 可以选择自定义 `build_prompt()` 函数，也可以使用默认的实现。
+在 SciEvalKit 中，每个 dataset 类都包含一个名为 `build_prompt()` 的函数，用于构建输入问题的格式。不同的 benchmark 可以选择自定义 `build_prompt()` 函数，也可以使用默认的实现。
 
 例如，在处理默认的多选题/Multi-Choice QA 时，`ImageMCQDataset.build_prompt()` 类会将 hint、question、options 等元素组合成如下格式：
 
@@ -224,15 +224,15 @@ B. Option B
 Please select the correct answer from the options above.
 ```
 
-此外，VLMEvalKit 也支持在模型层面自定义对不同 benchmark 构建 prompt 的方法，即 `model.build_prompt()`。
+此外，SciEvalKit 也支持在模型层面自定义对不同 benchmark 构建 prompt 的方法，即 `model.build_prompt()`。
 *   **优先级：** 当同时定义了 `model.build_prompt()` 以及 `dataset.build_prompt()` 时，`model.build_prompt()` 将优先于 `dataset.build_prompt()`。
 
 **自定义 `use_custom_prompt()`：**
-为了更灵活地适应不同的 benchmark，VLMEvalKit 支持在模型中自定义 `model.use_custom_prompt()` 函数来决定何时使用模型特定的 Prompt。示例如下：
+为了更灵活地适应不同的 benchmark，SciEvalKit 支持在模型中自定义 `model.use_custom_prompt()` 函数来决定何时使用模型特定的 Prompt。示例如下：
 
 ```python
 def use_custom_prompt(self, dataset: str) -> bool:
-    from vlmeval.dataset import DATASET_TYPE, DATASET_MODALITY
+    from scieval.dataset import DATASET_TYPE, DATASET_MODALITY
     dataset_type = DATASET_TYPE(dataset, default=None)
     
     if not self._use_custom_prompt:
@@ -246,7 +246,7 @@ def use_custom_prompt(self, dataset: str) -> bool:
 
 ### 模型切分与 GPU 分配
 
-VLMEvalKit 支持在同机上进程间自动划分 GPU 资源（支持 `lmdeploy` 或 `transformers` 后端）。
+SciEvalKit 支持在同机上进程间自动划分 GPU 资源（支持 `lmdeploy` 或 `transformers` 后端）。
 
 *   **Python 启动：** 默认使用所有可用 GPU。使用 `CUDA_VISIBLE_DEVICES` 指定特定 GPU。
 *   **Torchrun 启动：**
