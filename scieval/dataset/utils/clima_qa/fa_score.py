@@ -36,7 +36,7 @@ def _smooth_probability(p: float, T: float = 5.0) -> float:
 
 class FAScore(BaseMetric):
     def __init__(self,
-                 openai_model: str = "gpt-4",
+                 model: str = "gpt-4",
                  use_openai: bool = True,
                  return_none_when_disabled: bool = False,
                  temperature_smooth_T: float = 5.0):
@@ -44,13 +44,13 @@ class FAScore(BaseMetric):
         self.return_none_when_disabled = return_none_when_disabled
         self.temperature_smooth_T = float(temperature_smooth_T)
 
-        self.model_name = openai_model
+        self.model_name = model
         self.model = build_judge(model=self.model_name)
         if self.use_openai:
             try:
                 base_url = self.model.api_base[:-17]
                 self.client = OpenAI(base_url=base_url)
-                encoding_model = openai_model.split(':')[1] if openai_model[:2] == 'ft' else openai_model
+                encoding_model = model.split(':')[1] if model[:2] == 'ft' else model
                 self.encoder = tiktoken.encoding_for_model(encoding_model)
             except Exception:
                 self.use_openai = False

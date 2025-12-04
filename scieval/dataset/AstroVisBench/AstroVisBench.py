@@ -121,7 +121,7 @@ class AstroVisBench(ImageVQADataset):
 
     def evaluate_process(self, eval_file, **judge_kwargs):
         print(f"Starting evaluation for {self.dataset_name}...")
-        MAX_WORKERS = 60
+        MAX_WORKERS = judge_kwargs.pop('max_workers', 4)
         ctx = multiprocessing.get_context('spawn')
         try:
             df = pd.DataFrame(load(eval_file))
@@ -313,7 +313,7 @@ class AstroVisBench(ImageVQADataset):
         if len(pending_tasks) > 0:
             print(f"Resuming execution for {len(pending_tasks)} remaining tasks.")
 
-            MAX_WORKERS = 60
+            MAX_WORKERS = judge_kwargs.pop('max_workers', 4)
             ctx = multiprocessing.get_context('spawn')
             manager = ctx.Manager()
             result_queue = manager.Queue()
