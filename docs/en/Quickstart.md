@@ -7,8 +7,8 @@ Before running the evaluation script, you need to configure the VLMs and correct
 ### Installation
 
 ```bash
-git clone https://github.com/open-compass/VLMEvalKit.git
-cd VLMEvalKit
+git clone https://github.com/open-compass/SciEvalKit.git
+cd SciEvalKit
 pip install -e .
 ```
 
@@ -18,10 +18,10 @@ To use API models (e.g., GPT-4v, Gemini-Pro-V) for inference, you must set up AP
 
 > **Note:** Some datasets require an LLM as a Judge and have default evaluation models configured (see *Extra Notes*). You also need to configure the corresponding APIs when evaluating these datasets.
 
-You can place the required keys in `$VLMEvalKit/.env` or set them directly as environment variables. If you choose to create a `.env` file, the content should look like this:
+You can place the required keys in `$SciEvalKit/.env` or set them directly as environment variables. If you choose to create a `.env` file, the content should look like this:
 
 ```bash
-# .env file, place it under $VLMEvalKit
+# .env file, place it under $SciEvalKit
 
 # --- API Keys for Proprietary VLMs ---
 # QwenVL APIs
@@ -62,9 +62,9 @@ Fill in your keys where applicable. These API keys will be automatically loaded 
 
 ## Step 1: Configuration
 
-**VLM Configuration:** All VLMs are configured in `vlmeval/config.py`. For some VLMs (e.g., MiniGPT-4, LLaVA-v1-7B), additional configuration is required (setting the code/model weight root directory in the config file).
+**VLM Configuration:** All VLMs are configured in `scieval/config.py`. For some VLMs (e.g., MiniGPT-4, LLaVA-v1-7B), additional configuration is required (setting the code/model weight root directory in the config file).
 
-When evaluating, you should use the model name specified in `supported_VLM` in `vlmeval/config.py`. Ensure you can successfully run inference with the VLM before starting the evaluation.
+When evaluating, you should use the model name specified in `supported_VLM` in `scieval/config.py`. Ensure you can successfully run inference with the VLM before starting the evaluation.
 
 **Check Command:**
 
@@ -76,12 +76,12 @@ vlmutil check {MODEL_NAME}
 
 ## Step 2: Evaluation
 
-We use `run.py` for evaluation. You can use `$VLMEvalKit/run.py` or create a soft link to the script.
+We use `run.py` for evaluation. You can use `$SciEvalKit/run.py` or create a soft link to the script.
 
 ### Basic Arguments
 
-*   `--data` (list[str]): Set the dataset names supported in VLMEvalKit (refer to `vlmeval/dataset/__init__.py` or use `vlmutil dlist all` to check).
-*   `--model` (list[str]): Set the VLM names supported in VLMEvalKit (defined in `supported_VLM` in `vlmeval/config.py`).
+*   `--data` (list[str]): Set the dataset names supported in SciEvalKit (refer to `scieval/dataset/__init__.py` or use `vlmutil dlist all` to check).
+*   `--model` (list[str]): Set the VLM names supported in SciEvalKit (defined in `supported_VLM` in `scieval/config.py`).
 *   `--mode` (str, default `'all'`): Running mode, choices are `['all', 'infer', 'eval']`.
     *   `"all"`: Perform both inference and evaluation.
     *   `"infer"`: Perform inference only.
@@ -143,7 +143,7 @@ python run.py --config config.json
 
 *   `--judge` (str): Specify the evaluation model for datasets that require model-based evaluation.
     *   If not specified, the configured default model will be used.
-    *   The model can be a VLM supported in VLMEvalKit or a custom model.
+    *   The model can be a VLM supported in SciEvalKit or a custom model.
 *   `--judge-args` (str): Arguments for the judge model (in JSON string format).
     *   You can pass parameters like `temperature`, `max_tokens` when specifying the judge via `--judge`.
     *   Specific args depend on the model initialization class (e.g., `scieval.api.gpt.OpenAIWrapper`).
@@ -186,7 +186,7 @@ Some datasets have specific requirements during evaluation:
     *   If you want to use a model other than the default GPT-4o, you must specify `base_url` and `api_key` separately (defaults to `OPENAI_API_KEY`, `OPENAI_API_BASE` in env).
 *   **AstroVisBench:**
     *   **Environment:** Must download dependencies following the official guide and set the `AstroVisBench_Env` environment variable.
-    *   **Python Env:** Due to complex dependencies, it is recommended to create a separate environment, install VLMEvalKit dependencies, and then install the official dependencies to avoid conflicts.
+    *   **Python Env:** Due to complex dependencies, it is recommended to create a separate environment, install SciEvalKit dependencies, and then install the official dependencies to avoid conflicts.
     *   **Concurrency:** Default concurrency is 4. Can be changed via `--judge-args '{"max_workers": <nums>}'`.
     *   **Judge Model:** Requires Claude 3.5 Sonnet for evaluation. Ensure `ANTHROPIC_API_KEY` is set.
 
@@ -210,7 +210,7 @@ The following datasets use specific models as default Judges:
 
 If the model output for a benchmark does not match expectations, it might be due to incorrect prompt construction.
 
-In VLMEvalKit, each dataset class has a `build_prompt()` function. For example, `ImageMCQDataset.build_prompt()` combines hint, question, and options into a standard format:
+In SciEvalKit, each dataset class has a `build_prompt()` function. For example, `ImageMCQDataset.build_prompt()` combines hint, question, and options into a standard format:
 
 ```text
 HINT
@@ -222,7 +222,7 @@ B. Option B
 Please select the correct answer from the options above.
 ```
 
-VLMEvalKit also supports **Model-Level custom prompt building** via `model.build_prompt()`.
+SciEvalKit also supports **Model-Level custom prompt building** via `model.build_prompt()`.
 *   **Priority:** `model.build_prompt()` overrides `dataset.build_prompt()`.
 
 **Custom `use_custom_prompt()`:**
@@ -230,7 +230,7 @@ You can define `model.use_custom_prompt()` to decide when to use the model-speci
 
 ```python
 def use_custom_prompt(self, dataset: str) -> bool:
-    from vlmeval.dataset import DATASET_TYPE, DATASET_MODALITY
+    from scieval.dataset import DATASET_TYPE, DATASET_MODALITY
     dataset_type = DATASET_TYPE(dataset, default=None)
     
     if not self._use_custom_prompt:
@@ -244,7 +244,7 @@ def use_custom_prompt(self, dataset: str) -> bool:
 
 ### Model Splitting & GPU Allocation
 
-VLMEvalKit supports automatic GPU resource division for `lmdeploy` or `transformers` backends.
+SciEvalKit supports automatic GPU resource division for `lmdeploy` or `transformers` backends.
 
 *   **Python:** Defaults to all visible GPUs. Use `CUDA_VISIBLE_DEVICES` to restrict.
 *   **Torchrun:**
