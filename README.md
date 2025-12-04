@@ -1,16 +1,16 @@
-# PrismaEval ToolKit
+# SciEval ToolKit
 
-**PrismaEval** is an open-source evaluation framework and leaderboard for measuring the *scientific intelligence* of large language and vision–language models.  
+**SciEval** is an open-source evaluation framework and leaderboard for measuring the *scientific intelligence* of large language and vision–language models.  
 It targets the full research workflow which is from scientific image understanding to hypothesis generation and provides a reproducible toolkit that unifies data loading, prompt construction, inference and evaluation.
 
 <div align="center">
-  <img src="assets/github.png" alt="PrismaEval capability radar" width="100%">
+  <img src="assets/github.png" alt="SciEval capability radar" width="100%">
 </div>
 
-Modern frontier language models routinely score near *90* on general‑purpose benchmarks, yet even the strongest model (e.g., **Gemini 3 Pro**) drops below *60* when challenged by rigorous, domain‑specific scientific tasks.  PrismaEval makes this **general‑versus‑scientific gap** explicit and supplies the evaluation infrastructure needed to guide the integration of broad instruction‑tuned abilities with specialised skills in coding, symbolic reasoning and diagram understanding.
+Modern frontier language models routinely score near *90* on general‑purpose benchmarks, yet even the strongest model (e.g., **Gemini 3 Pro**) drops below *60* when challenged by rigorous, domain‑specific scientific tasks.  SciEval makes this **general‑versus‑scientific gap** explicit and supplies the evaluation infrastructure needed to guide the integration of broad instruction‑tuned abilities with specialised skills in coding, symbolic reasoning and diagram understanding.
 
 <div align="center">
-  <img src="assets/general_scientific_comparison.png" alt="PrismaEval capability radar" width="100%">
+  <img src="assets/general_scientific_comparison.png" alt="SciEval capability radar" width="100%">
 </div>
 
 ## Key Features
@@ -24,7 +24,7 @@ Modern frontier language models routinely score near *90* on general‑purpose 
 <hr style="height:1px;background:black;border:none;" />
 
 ## News
-* **2025‑12‑05 · PrismaEval v1 Launch**  
+* **2025‑12‑05 · SciEval v1 Launch**  
   &nbsp;&nbsp;• Initial public release of a science‑focused evaluation toolkit and leaderboard devoted to realistic research workflows.
 
   &nbsp;&nbsp;• Initial evaluation of 20 frontier models (closed & open source) now live at <https://discovery.intern-ai.org.cn/sciprismax/leaderboard>.
@@ -47,8 +47,8 @@ guides, or consult the VLMEvalKit tutorial
 
 ### 1 · Install
 ```bash
-git clone https://github.com/PrismaEval/PrismaEval-Kit.git
-cd PrismaEval-Kit
+git clone https://github.com/InternScience/SciEvalKit.git
+cd SciEval-Kit
 pip install -e .[all]    # brings in vllm, openai‑sdk, hf_hub, etc.
 ```
 
@@ -60,7 +60,7 @@ OPENAI_API_KEY=...
 GOOGLE_API_KEY=...
 DASHSCOPE_API_KEY=...
 ```
-If no keys are provided, PrismaEval falls back to rule‑based scoring
+If no keys are provided, SciEval falls back to rule‑based scoring
 whenever possible.
 
 ### 3 · Run a API demo test
@@ -88,6 +88,6 @@ python run.py \
 
 ## Acknowledgements
 
-PrismaEval ToolKit is built on top of the excellent **[VLMEvalKit](https://github.com/open-compass/VLMEvalKit)** framework and we thank the OpenCompass team not only for open‑sourcing their engine, but also for publishing thorough deployment and development guides ([Quick Start](https://vlmevalkit.readthedocs.io/en/latest/Quickstart.html), [Development Notes](https://vlmevalkit.readthedocs.io/en/latest/Development.html)) that streamlined our integration.
+SciEval ToolKit is built on top of the excellent **[VLMEvalKit](https://github.com/open-compass/VLMEvalKit)** framework and we thank the OpenCompass team not only for open‑sourcing their engine, but also for publishing thorough deployment and development guides ([Quick Start](https://vlmevalkit.readthedocs.io/en/latest/Quickstart.html), [Development Notes](https://vlmevalkit.readthedocs.io/en/latest/Development.html)) that streamlined our integration.
 
-We also acknowledge the core PrismaEval contributors for their efforts on dataset curation, evaluation design, and engine implementation: Jun Yao, Han Deng, Yizhou Wang, Jiabei Xiao, Jiaqi Liu, Encheng Su, Yujie Liu, Weida Wang, Junchi Yao, Haoran Sun, Runmin Ma, Bo Zhang, Dongzhan Zhou, Shufei Zhang, Peng Ye, Xiaosong Wang, and Shixiang Tang, as well as all community testers who provided early feedback.
+We also acknowledge the core SciEval contributors for their efforts on dataset curation, evaluation design, and engine implementation: Jun Yao, Han Deng, Yizhou Wang, Jiabei Xiao, Jiaqi Liu, Encheng Su, Yujie Liu, Weida Wang, Junchi Yao, Haoran Sun, Runmin Ma, Bo Zhang, Dongzhan Zhou, Shufei Zhang, Peng Ye, Xiaosong Wang, and Shixiang Tang, as well as all community testers who provided early feedback.
