@@ -7,7 +7,7 @@ Before running the evaluation script, you need to configure the VLMs and correct
 ### Installation
 
 ```bash
-git clone https://github.com/open-compass/SciEvalKit.git
+git clone https://github.com/InternScience/SciEvalKit.git
 cd SciEvalKit
 pip install -e .
 ```
@@ -185,10 +185,14 @@ Some datasets have specific requirements during evaluation:
     *   Uses model-based evaluation incompatible with the framework's standard model access.
     *   If you want to use a model other than the default GPT-4o, you must specify `base_url` and `api_key` separately (defaults to `OPENAI_API_KEY`, `OPENAI_API_BASE` in env).
 *   **AstroVisBench:**
-    *   **Environment:** Must download dependencies following the official guide and set the `AstroVisBench_Env` environment variable.
-    *   **Python Env:** Due to complex dependencies, it is recommended to create a separate environment, install SciEvalKit dependencies, and then install the official dependencies to avoid conflicts.
-    *   **Concurrency:** Default concurrency is 4. Can be changed via `--judge-args '{"max_workers": <nums>}'`.
-    *   **Judge Model:** Requires Claude 3.5 Sonnet for evaluation. Ensure `ANTHROPIC_API_KEY` is set.
+    *   **Environment Dependencies:** Before running, you need to download the runtime dependencies according to the [official instructions](https://github.com/SebaJoe/AstroVisBench), and specify the value of `AstroVisBench_Env` in the environment variables.
+    *   **Python Environment:** Due to the complexity of its Python environment, it is recommended to create a separate environment, install the project dependencies again, and then follow the official team's instructions to install the dependencies to avoid conflicts and slowing down the startup speed of testing other datasets.
+    *   **Concurrency Settings:** Concurrency logic is set for dataset evaluation, with a default value of 4. This can be specified using `--judge-args '{"max_workers": <nums>}'`.
+    *   **Evaluation Model:** This model requires Claude 4.5 Sonnet for evaluation, and the `ANTHROPIC_API_KEY` environment variable needs to be configured.
+    *   **Evaluation Files:** The framework stores the model's inference results in `xlsx` format files by default for easy viewing. However, for AstroVisBench, some fields in the data may exceed the length limit of an `xlsx` cell. Therefore, you need to set the environment variable `PRED_FORMAT` to `json` or `tsv` (currently only these three formats are supported).
+*   **SciCode:**
+    *   **Environment Dependencies:** Before running, you need to download the runtime dependency file `test_data.h5` according to the [official instructions](https://github.com/scicode-bench/SciCode) and place it in the `scieval/dataset/SciCode/eval/data` directory. 
+    *   **Evaluation Files:** By default, the framework stores the model's inference results in an `xlsx` format file for easy viewing. However, for SciCode, the output length of some models, such as `deepseek-R1`, may exceed the cell length limit of `xlsx`. In this case, you need to set the environment variable `PRED_FORMAT` to `json` or `tsv` (currently only these three formats are supported).
 
 ### Default Judge Models
 
