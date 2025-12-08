@@ -19,11 +19,7 @@ import argparse
 from openai import OpenAI
 
 prompts_csv = 'scieval/dataset/AstroVisBench/viseval_prompts.csv'
-model = "claude-sonnet-4-5-20250929"
-client = aclient = OpenAI(
-    base_url="https://api.boyuerichdata.opensphereai.com/v1", # 确保这里以 /v1 结尾
-    api_key=os.getenv("BOYUE_API_KEY")
-)
+
 
 
 def safe_parse_json_from_claude(text):

@@ -491,7 +491,7 @@ def main():
                     # Setup the proxy for the evaluation
                     eval_proxy = os.environ.get('EVAL_PROXY', None)
                     old_proxy = os.environ.get('HTTP_PROXY', '')
-                    if eval_proxy is not None:
+                    if eval_proxy :
                         proxy_set(eval_proxy)
 
                     env_backup = {}
