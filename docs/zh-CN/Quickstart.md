@@ -7,7 +7,7 @@
 ### 安装
 
 ```bash
-git clone https://github.com/open-compass/SciEvalKit.git
+git clone https://github.com/InternScience/SciEvalKit.git
 cd SciEvalKit
 pip install -e .
 ```
@@ -185,11 +185,14 @@ python run.py --config config.json
     *   评测时用到了模型评估，且使用方式和框架中提供的模型访问并不兼容。
     *   如果想使用其他模型评估而不是默认的 GPT-4o，需单独指定 `base_url`, `api_key`（默认读取环境中的 `OPENAI_API_KEY`, `OPENAI_API_BASE`，运行前需指定）。
 *   **AstroVisBench:**
-    *   **环境依赖：** 运行前需要按照 [官方说明] 下载运行依赖环境，并在环境变量中指定 `AstroVisBench_Env` 的值。
+    *   **环境依赖：** 运行前需要按照 [官方说明](https://github.com/SebaJoe/AstroVisBench) 下载运行依赖环境，并在环境变量中指定 `AstroVisBench_Env` 的值。
     *   **Python 环境：** 由于其运行 Python 环境比较复杂，建议单独建立一个环境再次安装本项目依赖，然后按照官方团队的指示安装依赖，以免产生冲突和拖慢测试其他数据集的启动速度。
     *   **并发设置：** 数据集评测设置了并发逻辑，默认为 4，可通过 `--judge-args '{"max_workers": <nums>}'` 进行指定。
-    *   **评测模型：** 该模型需要用到 Claude 3.5 Sonnet 进行评测，需要配置 `ANTHROPIC_API_KEY` 环境变量。
-
+    *   **评测模型：** 该模型需要用到 Claude 4.5 Sonnet 进行评测，需要配置 `ANTHROPIC_API_KEY` 环境变量。
+    *   **评测文件：** 框架默认将模型的推理结果存储在`xlsx`格式的文件中以方便查看，但是对于AstroVisBench来说数据中的某些字段会超出xlsx单元格的长度限制，需要设置环境变量PRED_FORMAT为`json`或`tsv`（目前只支持这三种格式）。
+*   **SciCode:**
+    *   **环境依赖：** 运行前需要按照 [官方说明](https://github.com/scicode-bench/SciCode) 下载运行依赖文件`test_data.h5`，并放置在`scieval/dataset/SciCode/eval/data`目录下。  
+    *   **评测文件：** 框架默认将模型的推理结果存储在`xlsx`格式的文件中以方便查看，但是对于SciCode来说部分模型如`deepseek-R1`的输出长度可能会超出xlxs单元格长度限制，此时需要设置环境变量PRED_FORMAT为`json`或`tsv`（目前只支持这三种格式）
 ### 默认评判模型列表
 
 以下数据集在评估阶段默认使用特定的模型作为 Judge：
