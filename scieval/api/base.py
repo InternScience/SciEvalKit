@@ -264,47 +264,31 @@ class BaseAPI:
 
         for i in range(self.retry):
             try:
-                # 调用子类
                 ret_code, answer, log = self.generate_inner(message, **kwargs)
-
-                # 如果代码走到了这里，说明没有抛出异常 (HTTP 200)
-                # 但有可能 ret_code 依然是非 0 (取决于子类具体实现，通常是 0)
                 if ret_code == 0 and self.fail_msg not in answer:
                     return answer
-
-                # 如果 ret_code 非 0，也可以检查 log 里有没有绿灯关键词
                 if self._check_green_light(str(log), current_ignore_patterns):
                     return f"[Policy Violation Ignored] {log}"
 
             except Exception as err:
-
-                error_content = str(err)  # 默认错误信息
-
-                # 尝试从异常中提取 API 返回的详细 JSON (针对 HTTPError)
+                error_content = str(err) 
                 if hasattr(err, 'response') and err.response is not None:
                     try:
-                        # 比如 OpenAI 返回的 {"error": {"code": "content_policy_violation"...}}
-                        # 就藏在 err.response.text 里
                         api_error_text = err.response.text
                         error_content += f" | API Response: {api_error_text}"
                     except:
                         pass
-
-                # 1. 检查是否绿灯 (放行)
                 if self._check_green_light(error_content, current_ignore_patterns):
                     self.logger.warning(f"Error matched ignore pattern. Returning error as result.")
                     return f"[Allowed Exceptions] {error_content}"
 
-                # 2. 检查 Fail Fast (报错退出)
-                if fail_fast:
-                    self.logger.critical(f"[Fail-Fast] Exception occurred: {error_content}")
-                    import os
-                    os._exit(1)
-
-                # 3. 普通重试
                 self.logger.error(f"Attempt {i + 1} failed: {err}")
-                time.sleep(rd.random() * self.wait * 2)
-
+                if i < self.retry - 1:
+                    time.sleep(rd.random() * self.wait * 2)
+        if fail_fast:
+            self.logger.critical(f"[Fail-Fast] All {self.retry} attempts failed. Aborting.")
+            import os
+            os._exit(1)
         return self.fail_msg
 
     def _check_green_light(self, text, patterns):
