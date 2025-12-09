@@ -1,14 +1,17 @@
 from typing import Any, Dict, List
 from datasets import load_dataset
-from ...smp import *
 from ..text_base import TextBaseDataset
 from ..utils.judge_util import *
 import concurrent.futures
 import requests
 import shutil
 import ast
+from ...smp.file import dump, load ,get_intermediate_file_path
 from openai import OpenAI
 from json_repair import repair_json
+import pandas as pd
+import time
+import subprocess
 
 save_dir = "./outputs/sgi_code_logs"
 tmp_data_dir = "./outputs/sgi_tmp_data"
@@ -384,10 +387,10 @@ def minus(a, b):
             os.makedirs(os.path.join(tmp_data_dir, "0200"), exist_ok=True)
             os.makedirs(os.path.join(tmp_data_dir, "0236"), exist_ok=True)
             
-            # download_file("https://raw.githubusercontent.com/InternScience/SGI-Bench/main/evaluation/task_3_dry_experiment/data/SGI_DryExperiment_0206/t10k-images-idx3-ubyte.gz", tmp_data_dir+"/0206")
-            # download_file("https://raw.githubusercontent.com/InternScience/SGI-Bench/main/evaluation/task_3_dry_experiment/data/SGI_DryExperiment_0206/t10k-labels-idx1-ubyte.gz", tmp_data_dir+"/0206")
-            # download_file("https://raw.githubusercontent.com/InternScience/SGI-Bench/main/evaluation/task_3_dry_experiment/data/SGI_DryExperiment_0206/train-images-idx3-ubyte.gz", tmp_data_dir+"/0206")
-            # download_file("https://raw.githubusercontent.com/InternScience/SGI-Bench/main/evaluation/task_3_dry_experiment/data/SGI_DryExperiment_0206/train-labels-idx1-ubyte.gz", tmp_data_dir+"/0206")
+            download_file("https://raw.githubusercontent.com/InternScience/SGI-Bench/main/evaluation/task_3_dry_experiment/data/SGI_DryExperiment_0206/t10k-images-idx3-ubyte.gz", tmp_data_dir+"/0206")
+            download_file("https://raw.githubusercontent.com/InternScience/SGI-Bench/main/evaluation/task_3_dry_experiment/data/SGI_DryExperiment_0206/t10k-labels-idx1-ubyte.gz", tmp_data_dir+"/0206")
+            download_file("https://raw.githubusercontent.com/InternScience/SGI-Bench/main/evaluation/task_3_dry_experiment/data/SGI_DryExperiment_0206/train-images-idx3-ubyte.gz", tmp_data_dir+"/0206")
+            download_file("https://raw.githubusercontent.com/InternScience/SGI-Bench/main/evaluation/task_3_dry_experiment/data/SGI_DryExperiment_0206/train-labels-idx1-ubyte.gz", tmp_data_dir+"/0206")
             
             download_file("https://raw.githubusercontent.com/InternScience/SGI-Bench/main/evaluation/task_3_dry_experiment/data/SGI_DryExperiment_0200/adult.data", tmp_data_dir+"/0200")
             download_file("https://raw.githubusercontent.com/InternScience/SGI-Bench/main/evaluation/task_3_dry_experiment/data/SGI_DryExperiment_0200/adult.test", tmp_data_dir+"/0200")
