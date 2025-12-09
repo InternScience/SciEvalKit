@@ -93,6 +93,9 @@ from .trqa import TRQA
 from .ChemBench.chembench import ChemBench
 from .climaqa import Clima_QA
 from .PHYSICS.PHYSICS import PHYSICS
+from .SGI_Bench_1_0.deep_research import SGI_Bench_Deep_Research
+from .SGI_Bench_1_0.wet_experiment import SGI_Bench_Wet_Experiment
+from .SGI_Bench_1_0.dry_experiment import SGI_Bench_Dry_Experiment
 
 class ConcatDataset(ImageBaseDataset):
     # This dataset takes multiple dataset names as input and aggregate them into a single dataset.
@@ -255,7 +258,7 @@ VIDEO_DATASET = [
 ]
 
 TEXT_DATASET = [
-    TextMCQDataset,ResearchbenchGenerate,ResearchbenchRank,ResearchbenchRetrieve, PHYSICS, MaScQA, SciCode, ProteinLMBench, TRQA, AstroVisBench
+    TextMCQDataset,ResearchbenchGenerate,ResearchbenchRank,ResearchbenchRetrieve, PHYSICS, MaScQA, SciCode, ProteinLMBench, TRQA, AstroVisBench, SGI_Bench_Deep_Research, SGI_Bench_Wet_Experiment, SGI_Bench_Dry_Experiment
 ]
 
 CUSTOM_DATASET = [
