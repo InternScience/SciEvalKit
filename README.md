@@ -7,16 +7,16 @@ A unified evaluation toolkit and leaderboard for rigorously assessing the scient
 <hr style="width:100%;margin:16px 0;border:0;border-top:0.1px solid #d0d7de;" />
 
 <p align="center">
-  <a href="https://opencompass.org.cn/Intern-Discovery-Eval">
+  <a href="https://opencompass.org.cn/Intern-Discovery-Eval" style="text-decoration:none;border-bottom:0;">
     <img src="https://img.shields.io/badge/Website-SciEval-b8dcff?style=for-the-badge&logo=google-chrome&logoColor=white" />
   </a>&nbsp;&nbsp;&nbsp;
-  <a href="https://huggingface.co/spaces/InternScience/SciEval-Leaderboard">
+  <a href="https://huggingface.co/spaces/InternScience/SciEval-Leaderboard" style="text-decoration:none;border-bottom:0;">
     <img src="https://img.shields.io/badge/LEADERBOARD-Scieval-f6e58d?style=for-the-badge&logo=huggingface" />
   </a>&nbsp;&nbsp;&nbsp;
-  <a href="https://github.com/InternScience/SciEvalKit/blob/main/docs/SciEvalKit.pdf">
+  <a href="https://github.com/InternScience/SciEvalKit/blob/main/docs/SciEvalKit.pdf" style="text-decoration:none;border-bottom:0;">
     <img src="https://img.shields.io/badge/REPORT-Technical-f4c2d7?style=for-the-badge" />
   </a>&nbsp;&nbsp;&nbsp;
-  <a href="https://github.com/InternScience/SciEvalKit">
+  <a href="https://github.com/InternScience/SciEvalKit" style="text-decoration:none;border-bottom:0;">
     <img src="https://img.shields.io/badge/GitHub-Repository-c7b9e2?style=for-the-badge&logo=github&logoColor=white" />
   </a>
 </p>
@@ -137,7 +137,7 @@ python run.py \
 
 
 
-## <img src="assets/icon/thanks.png" alt="thanks" height="28" style="vertical-align:middle;" />&nbsp;Acknowledgements
+## <img src="assets/icon/thanks.png" alt="thanks" height="30" style="vertical-align:middle;" />&nbsp;Acknowledgements
 
 SciEval ToolKit is built on top of the excellent **[VLMEvalKit](https://github.com/open-compass/VLMEvalKit)** framework and we thank the OpenCompass team not only for open‑sourcing their engine, but also for publishing thorough deployment and development guides ([Quick Start](https://vlmevalkit.readthedocs.io/en/latest/Quickstart.html), [Development Notes](https://vlmevalkit.readthedocs.io/en/latest/Development.html)) that streamlined our integration.
 
