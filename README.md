@@ -7,18 +7,26 @@ A unified evaluation toolkit and leaderboard for rigorously assessing the scient
 <hr style="width:100%;margin:16px 0;border:0;border-top:0.1px solid #d0d7de;" />
 
 <p align="center">
-  <a href="https://opencompass.org.cn/Intern-Discovery-Eval" style="text-decoration:none;border-bottom:0;">
-    <img src="https://img.shields.io/badge/Website-SciEval-b8dcff?style=for-the-badge&logo=google-chrome&logoColor=white" />
-  </a>&nbsp;&nbsp;&nbsp;
-  <a href="https://huggingface.co/spaces/InternScience/SciEval-Leaderboard" style="text-decoration:none;border-bottom:0;">
-    <img src="https://img.shields.io/badge/LEADERBOARD-Scieval-f6e58d?style=for-the-badge&logo=huggingface" />
-  </a>&nbsp;&nbsp;&nbsp;
-  <a href="https://github.com/InternScience/SciEvalKit/blob/main/docs/SciEvalKit.pdf" style="text-decoration:none;border-bottom:0;">
-    <img src="https://img.shields.io/badge/REPORT-Technical-f4c2d7?style=for-the-badge" />
-  </a>&nbsp;&nbsp;&nbsp;
-  <a href="https://github.com/InternScience/SciEvalKit" style="text-decoration:none;border-bottom:0;">
-    <img src="https://img.shields.io/badge/GitHub-Repository-c7b9e2?style=for-the-badge&logo=github&logoColor=white" />
-  </a>
+  <span style="display:inline-block;vertical-align:middle;">
+    <a href="https://opencompass.org.cn/Intern-Discovery-Eval" style="text-decoration:none;border-bottom:0;">
+      <img src="https://img.shields.io/badge/Website-SciEval-b8dcff?style=for-the-badge&logo=google-chrome&logoColor=white" style="display:block;" />
+    </a>
+  </span>&nbsp;&nbsp;&nbsp;
+  <span style="display:inline-block;vertical-align:middle;">
+    <a href="https://huggingface.co/spaces/InternScience/SciEval-Leaderboard" style="text-decoration:none;border-bottom:0;">
+      <img src="https://img.shields.io/badge/LEADERBOARD-Scieval-f6e58d?style=for-the-badge&logo=huggingface" style="display:block;" />
+    </a>
+  </span>&nbsp;&nbsp;&nbsp;
+  <span style="display:inline-block;vertical-align:middle;">
+    <a href="https://github.com/InternScience/SciEvalKit/blob/main/docs/SciEvalKit.pdf" style="text-decoration:none;border-bottom:0;">
+      <img src="https://img.shields.io/badge/REPORT-Technical-f4c2d7?style=for-the-badge" style="display:block;" />
+    </a>
+  </span>&nbsp;&nbsp;&nbsp;
+  <span style="display:inline-block;vertical-align:middle;">
+    <a href="https://github.com/InternScience/SciEvalKit" style="text-decoration:none;border-bottom:0;">
+      <img src="https://img.shields.io/badge/GitHub-Repository-c7b9e2?style=for-the-badge&logo=github&logoColor=white" style="display:block;" />
+    </a>
+  </span>
 </p>
 
 <p align="center">
@@ -66,6 +74,16 @@ Its design is shaped by following core ideas:
 | **Discipline Coverage**             | Life Science • Astronomy • Earth Science • Chemistry • Materials Science • Physics.                                                                         |
 | **Multimodal & Executable Scoring** | Supports text, code, and image inputs; integrates code tasks and LLM-judge fallback for open-ended answers.                                                      |
 | **Reproducible & Extensible**       | Clear dataset and model registries, minimised hard-coding and modular evaluators make new tasks or checkpoints easy to plug in.                                  |
+
+<div align="center">
+  <img src="assets/framework.png" alt="SciEval framework overview" width="65%">
+</div>
+
+<p align="center">
+  <em>
+  An overview of the SciEval framework, illustrating how heterogeneous scientific datasets, unified prompt construction, model inference, and capability-oriented evaluators are integrated into a single reproducible evaluation pipeline.
+  </em>
+</p>
 
 
 ## <img src="assets/icon/news.png" alt="news" height="28" style="vertical-align:middle;" />&nbsp;News
