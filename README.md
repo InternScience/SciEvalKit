@@ -1,4 +1,4 @@
-<h1 align="center">SciEval ToolKit</h1>
+<h1 align="center"><img src="assets/icon/opencompass.png" alt="OpenCompass" height="50" style="vertical-align:middle;" />&nbsp;SciEval ToolKit</h1>
 
 <p align="center"><strong>
 A unified evaluation toolkit and leaderboard for rigorously assessing the scientific intelligence of large language and vision–language models across the full research workflow.
@@ -6,34 +6,17 @@ A unified evaluation toolkit and leaderboard for rigorously assessing the scient
 
 <hr style="width:100%;margin:16px 0;border:0;border-top:0.1px solid #d0d7de;" />
 
-<p align="center">
-  <span style="display:inline-block;vertical-align:middle;">
-    <a href="https://opencompass.org.cn/Intern-Discovery-Eval" style="text-decoration:none;border-bottom:0;">
-      <img src="https://img.shields.io/badge/Website-SciEval-b8dcff?style=for-the-badge&logo=google-chrome&logoColor=white" style="display:block;" />
-    </a>
-  </span>&nbsp;&nbsp;&nbsp;
-  <span style="display:inline-block;vertical-align:middle;">
-    <a href="https://huggingface.co/spaces/InternScience/SciEval-Leaderboard" style="text-decoration:none;border-bottom:0;">
-      <img src="https://img.shields.io/badge/LEADERBOARD-Scieval-f6e58d?style=for-the-badge&logo=huggingface" style="display:block;" />
-    </a>
-  </span>&nbsp;&nbsp;&nbsp;
-  <span style="display:inline-block;vertical-align:middle;">
-    <a href="https://github.com/InternScience/SciEvalKit/blob/main/docs/SciEvalKit.pdf" style="text-decoration:none;border-bottom:0;">
-      <img src="https://img.shields.io/badge/REPORT-Technical-f4c2d7?style=for-the-badge" style="display:block;" />
-    </a>
-  </span>&nbsp;&nbsp;&nbsp;
-  <span style="display:inline-block;vertical-align:middle;">
-    <a href="https://github.com/InternScience/SciEvalKit" style="text-decoration:none;border-bottom:0;">
-      <img src="https://img.shields.io/badge/GitHub-Repository-c7b9e2?style=for-the-badge&logo=github&logoColor=white" style="display:block;" />
-    </a>
-  </span>
-</p>
+<div align="center">
 
-<p align="center">
-  <img src="assets/icon/welcome.png" alt="welcome" height="24" style="vertical-align:middle;" />
-  &nbsp;Welcome to the official repository of <strong>SciEval</strong>!
-</p>
+[![Website](https://img.shields.io/badge/Website-SciEval-b8dcff?style=for-the-badge&logo=google-chrome&logoColor=white)](https://opencompass.org.cn/Intern-Discovery-Eval)&#160;
+[![Leaderboard](https://img.shields.io/badge/LEADERBOARD-Scieval-f6e58d?style=for-the-badge&logo=huggingface)](https://huggingface.co/spaces/InternScience/SciEval-Leaderboard)&#160;
+[![Report](https://img.shields.io/badge/REPORT-Technical-f4c2d7?style=for-the-badge)](https://github.com/InternScience/SciEvalKit/blob/main/docs/SciEvalKit.pdf)&#160;
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-c7b9e2?style=for-the-badge&logo=github&logoColor=white)](https://github.com/InternScience/SciEvalKit)
 
+<img src="assets/icon/welcome.png" alt="welcome" height="24" style="vertical-align:middle;" />
+&nbsp;Welcome to the official repository of <strong>SciEval</strong>!
+
+</div>
 
 ## <img src="assets/icon/why.png" alt="why" height="28" style="vertical-align:middle;" />&nbsp;Why SciEval?
 
@@ -151,7 +134,7 @@ python run.py \
 ## <img src="assets/icon/update.png" alt="update" height="28" style="vertical-align:middle;" />&nbsp;Codebase Updates
 
 * **Execution‑based Scoring**
-  Code‑generation tasks (SciCode, AstroVisBench) are now graded via sandboxed unit tests.
+  &nbsp;&nbsp;• Code‑generation tasks (SciCode, AstroVisBench) are now graded via sandboxed unit tests.
 
 
 
