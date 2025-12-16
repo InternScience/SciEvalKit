@@ -43,7 +43,7 @@ class OpenAIWrapper(BaseAPI):
                  temperature: float = 0,
                  timeout: int = 600,
                  api_base: str = None,
-                 max_tokens: int = 16384,
+                 max_tokens: int = None,
                  img_size: int = -1,
                  img_detail: str = 'low',
                  use_azure: bool = False,
