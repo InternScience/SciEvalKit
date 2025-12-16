@@ -71,14 +71,14 @@ Its design is shaped by following core ideas:
 
 ## <img src="assets/icon/news.png" alt="news" height="28" style="vertical-align:middle;" />&nbsp;News
 * **[2025‑12‑12] · 📰 Evaluation Published on OpenCompass**
-  &nbsp;&nbsp;• SciEval’s benchmark results are now live on the [OpenCompass](https://opencompass.org.cn/Intern-Discovery-Eval) platform, providing broader community visibility and comparison.
+  - SciEval’s benchmark results are now live on the [OpenCompass](https://opencompass.org.cn/Intern-Discovery-Eval) platform, providing broader community visibility and comparison.
 
 * **[2025‑12‑05] · 🚀 SciEval v1 Launch**
-  &nbsp;&nbsp;• Initial public release of a science‑focused evaluation toolkit and leaderboard devoted to realistic research workflows.
+  - Initial public release of a science‑focused evaluation toolkit and leaderboard devoted to realistic research workflows.
+  - Coverage: seven scientific capability dimensions × six major disciplines in the initial benchmark suite.
 
-  &nbsp;&nbsp;• Coverage: seven scientific capability dimensions × six major disciplines in the initial benchmark suite.
 * **[2025‑12‑05] · 🌟 Community Submissions Open**
-  &nbsp;&nbsp;• Submit your benchmarks via pull request to appear on the official leaderboard.
+  - Submit your benchmarks via pull request to appear on the official leaderboard.
 
 ## <img src="assets/icon/start.png" alt="start" height="28" style="vertical-align:middle;" />&nbsp;Quick Start
 
@@ -134,7 +134,7 @@ python run.py \
 ## <img src="assets/icon/update.png" alt="update" height="28" style="vertical-align:middle;" />&nbsp;Codebase Updates
 
 * **Execution‑based Scoring**
-  &nbsp;&nbsp;• Code‑generation tasks (SciCode, AstroVisBench) are now graded via sandboxed unit tests.
+  - Code‑generation tasks (SciCode, AstroVisBench) are now graded via sandboxed unit tests.
 
 
 
