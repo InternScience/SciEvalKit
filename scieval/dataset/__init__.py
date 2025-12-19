@@ -93,6 +93,7 @@ from .trqa import TRQA
 from .ChemBench.chembench import ChemBench
 from .climaqa import Clima_QA
 from .PHYSICS.PHYSICS import PHYSICS
+from .CMPhysBench.cmphysbench import CMPhysBench
 
 class ConcatDataset(ImageBaseDataset):
     # This dataset takes multiple dataset names as input and aggregate them into a single dataset.
@@ -255,7 +256,7 @@ VIDEO_DATASET = [
 ]
 
 TEXT_DATASET = [
-    TextMCQDataset,ResearchbenchGenerate,ResearchbenchRank,ResearchbenchRetrieve, PHYSICS, MaScQA, SciCode, ProteinLMBench, TRQA, AstroVisBench
+    TextMCQDataset,ResearchbenchGenerate,ResearchbenchRank,ResearchbenchRetrieve, PHYSICS, MaScQA, SciCode, ProteinLMBench, TRQA, AstroVisBench , CMPhysBench
 ]
 
 CUSTOM_DATASET = [
