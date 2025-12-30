@@ -193,6 +193,8 @@ Some datasets have specific requirements during evaluation:
 *   **SciCode:**
     *   **Environment Dependencies:** Before running, you need to download the runtime dependency file `test_data.h5` according to the [official instructions](https://github.com/scicode-bench/SciCode) and place it in the `scieval/dataset/SciCode/eval/data` directory. 
     *   **Evaluation Files:** By default, the framework stores the model's inference results in an `xlsx` format file for easy viewing. However, for SciCode, the output length of some models, such as `deepseek-R1`, may exceed the cell length limit of `xlsx`. In this case, you need to set the environment variable `PRED_FORMAT` to `json` or `tsv` (currently only these three formats are supported).
+*   **SGI-Bench-1.0:**
+    *   **Instructions for use：** See details at：`scieval/dataset/SGI_Bench_1_0/readme.md`
 
 ### Default Judge Models
 

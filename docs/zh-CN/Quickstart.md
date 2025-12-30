@@ -193,6 +193,9 @@ python run.py --config config.json
 *   **SciCode:**
     *   **环境依赖：** 运行前需要按照 [官方说明](https://github.com/scicode-bench/SciCode) 下载运行依赖文件`test_data.h5`，并放置在`scieval/dataset/SciCode/eval/data`目录下。  
     *   **评测文件：** 框架默认将模型的推理结果存储在`xlsx`格式的文件中以方便查看，但是对于SciCode来说部分模型如`deepseek-R1`的输出长度可能会超出xlxs单元格长度限制，此时需要设置环境变量PRED_FORMAT为`json`或`tsv`（目前只支持这三种格式）
+*   **SGI-Bench-1.0:**
+    *   **运行说明：** 详情见：`scieval/dataset/SGI_Bench_1_0/readme.md`
+
 ### 默认评判模型列表
 
 以下数据集在评估阶段默认使用特定的模型作为 Judge：

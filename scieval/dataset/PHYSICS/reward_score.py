@@ -998,6 +998,7 @@ Special considerations:
 4. **No Explicit Options**: If the question does not provide explicit options, the output must align with the correct answer in content and meaning to be considered [Correct].
 Question: {problem}, Output sentence: {given_answer}, Correct answer: {ground_truth}, Judgement:
 '''
+    judge_kwargs.pop("model_args",None)
     correct = call_api(prompt=prompt,
                        client=client,
                        model=model_args.model_name,
