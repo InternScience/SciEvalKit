@@ -16,10 +16,13 @@ A unified evaluation toolkit and leaderboard for rigorously assessing the scient
 <img src="assets/icon/welcome.png" alt="welcome" height="24" style="vertical-align:middle;" />
 &nbsp;Welcome to the official repository of <strong>SciEval</strong>!
 
+<div align="center">
+  <img src="assets/SciEvalKit.png" alt="SciEval capability radar" width="90%">
+</div>
+
 </div>
 
 ## <img src="assets/icon/why.png" alt="why" height="28" style="vertical-align:middle;" />&nbsp;Why SciEval?
-
 
 **SciEval** is an open‑source evaluation framework and leaderboard aimed at measuring the **scientific intelligence** of large language and vision–language models.  
 Although modern frontier models often achieve *~90* on general‑purpose benchmarks, their performance drops sharply on rigorous, domain‑specific scientific tasks—revealing a persistent **general‑versus‑scientific gap** that motivates the need for SciEval.
@@ -29,10 +32,6 @@ Its design is shaped by following core ideas:
 - **End‑to‑end workflow coverage ▸** SciEval spans the full research pipeline—such as **image interpretation, symbolic reasoning, executable code generation, and hypothesis generation**—instead of isolated subtasks.  
 - **Capability‑oriented & reproducible ▸** A unified toolkit for **dataset construction, prompt engineering, inference, and expert‑aligned scoring** ensures transparent and repeatable comparisons.  
 - **Grounded in real scenarios ▸** Benchmarks use domain‑specific data and tasks so performance reflects **actual scientific practice**, not synthetic proxies.
-
-<div align="center">
-  <img src="assets/github.png" alt="SciEval capability radar" width="100%">
-</div>
 
 
 ## <img src="assets/icon/progress.png" alt="progress" height="28" style="vertical-align:middle;" />&nbsp;Progress in Scientific Intelligence
@@ -51,6 +50,10 @@ Its design is shaped by following core ideas:
 
 ## <img src="assets/icon/key.png" alt="key" height="28" style="vertical-align:middle;" />&nbsp;Key Features
 
+<div align="center">
+  <img src="assets/radar.png" alt="SciEval capability radar" width="70%">
+</div>
+
 | Category                                  | Highlights                                                                                                                                                       |
 | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Seven Core Dimensions**            | Scientific Knowledge Understanding, Scientific Code Generation, Scientific Symbolic Reasoning, Scientific Hypothesis Generation, Scientific Multimodal Perception, Scientific Multimodal Reasoning, Scientific Multimodal Understanding |
@@ -62,7 +65,7 @@ Its design is shaped by following core ideas:
   <img src="assets/framework.png" alt="SciEval framework overview" width="65%">
 </div>
 
-<p align="center">
+<p align="left">
   <em>
   An overview of the SciEval framework, illustrating how heterogeneous scientific datasets, unified prompt construction, model inference, and capability-oriented evaluators are integrated into a single reproducible evaluation pipeline.
   </em>
