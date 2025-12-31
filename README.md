@@ -139,7 +139,19 @@ python run.py \
 * **Execution‑based Scoring**
   - Code‑generation tasks (SciCode, AstroVisBench) are now graded via sandboxed unit tests.
 
+---
 
+## 📬 Contact Us
+
+- 💬 **GitHub Issues**: Please open an issue for bug reports or feature requests
+
+- 🤝 **Community**: 
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/InternScience/SGI-Bench/main/assets/wechat.jpg" alt="WeChat" width="200">
+</p>
+
+---
 
 ## <img src="assets/icon/thanks.png" alt="thanks" height="30" style="vertical-align:middle;" />&nbsp;Acknowledgements
 
