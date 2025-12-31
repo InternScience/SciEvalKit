@@ -10,7 +10,7 @@ A unified evaluation toolkit and leaderboard for rigorously assessing the scient
 
 [![Website](https://img.shields.io/badge/Website-SciEval-b8dcff?style=for-the-badge&logo=google-chrome&logoColor=white)](https://opencompass.org.cn/Intern-Discovery-Eval)&#160;
 [![Leaderboard](https://img.shields.io/badge/LEADERBOARD-Scieval-f6e58d?style=for-the-badge&logo=huggingface)](https://huggingface.co/spaces/InternScience/SciEval-Leaderboard)&#160;
-[![Report](https://img.shields.io/badge/REPORT-Technical-f4c2d7?style=for-the-badge)](https://github.com/InternScience/SciEvalKit/blob/main/docs/SciEvalKit.pdf)&#160;
+[![Report](https://img.shields.io/badge/REPORT-Technical-f4c2d7?style=for-the-badge)](https://arxiv.org/abs/2512.22334)&#160;
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-c7b9e2?style=for-the-badge&logo=github&logoColor=white)](https://github.com/InternScience/SciEvalKit)
 
 <img src="assets/icon/welcome.png" alt="welcome" height="24" style="vertical-align:middle;" />
