@@ -1,11 +1,11 @@
 from typing import Any, Dict, List
 from datasets import load_dataset
-from scieval import *
-from ...smp import *
 from ..text_base import TextBaseDataset
-from ..utils.judge_util import *
 import re
+import pandas as pd
+from ...smp.file import load, dump, get_intermediate_file_path
 from itertools import combinations
+
 
 def parse_experiment_steps(text):
     # Regular expression to match experiment steps until encountering a single line containing only a right parenthesis ")"
@@ -24,32 +24,32 @@ def parse_experiment_steps(text):
     #   (?:,)? : optionally match a trailing comma at the end of the line, ignore the comma
     param_pattern = r'^\s*(\w+)\s*=\s*(.*?)\s*(?:,)?\s*$'
     steps = []
-    
+
     for match in re.finditer(step_pattern, text, re.MULTILINE):
         output_var = match.group(1).strip()  # Extract output variable name
         action_name = match.group(2).strip()  # Extract action name
-        params = match.group(3).strip()      # Extract parameter list
-        
+        params = match.group(3).strip()  # Extract parameter list
+
         param_dict = {}
         # Split the parameter list by lines, ignoring empty lines and single-line ")"
         param_lines = [line.strip() for line in params.split('\n') if line.strip() and line.strip() != ')']
         for line in param_lines:
             param_match = re.match(param_pattern, line)
             if param_match:
-                key = param_match.group(1)       # Extract parameter key
+                key = param_match.group(1)  # Extract parameter key
                 value = param_match.group(2).strip()  # Extract parameter value
                 # If the value starts and ends with double quotes, remove the quotes
                 if value.startswith('"') and value.endswith('"'):
                     value = value[1:-1]
                 param_dict[key] = value
-        
+
         # Build the step dictionary
         steps.append({
             "action": action_name,
             "input": param_dict,
             "output": output_var
         })
-    
+
     return steps
 
 
@@ -58,7 +58,7 @@ def identify_variable_types(steps):
     Identify raw variables and generated variables in the experimental steps.
     Raw variables: variables that never appear as outputs in any step.
     Generated variables: variables that appear as outputs of some step.
-    
+
     Returns:
         original_vars (set): set of raw variables
         generated_vars (set): set of generated variables (function outputs)
@@ -72,13 +72,14 @@ def identify_variable_types(steps):
         output_var = step["output"]
         generated_vars.add(output_var)
         output_to_step_map[output_var] = idx  # Store the step index
-        
+
         for input_val in step["input"].values():
             # Simple check whether it is a variable (non-string literal, non-numeric)
             # If input_val is a string and does not start and end with quotes, and is not purely numeric, consider it a variable
             if isinstance(input_val, str) and \
-               not (input_val.startswith('"') and input_val.endswith('"')) and \
-               not (input_val.replace('.', '', 1).isdigit() or (input_val.startswith('-') and input_val[1:].replace('.', '', 1).isdigit())):
+                    not (input_val.startswith('"') and input_val.endswith('"')) and \
+                    not (input_val.replace('.', '', 1).isdigit() or (
+                            input_val.startswith('-') and input_val[1:].replace('.', '', 1).isdigit())):
                 all_input_vars.add(input_val)
 
     # Raw variables are those input variables that are not in the set of output variables of any step
@@ -106,22 +107,23 @@ def compare_exp_steps(gt_steps, pred_steps):
         "error_rate": 0.0,
         "details": []
     }
-    
+
     actions_gt = [step["action"] for step in gt_steps]
     actions_pred = [step["action"] for step in pred_steps]
-    
+
     results["order_similarity"] = kendall_tau_distance(actions_gt, actions_pred)
-    
+
     # Identify variable types and build output mappings
     original_vars_gt, generated_vars_gt, output_to_step_map_gt = identify_variable_types(gt_steps)
-    original_vars_pred, generated_vars_pred, output_to_step_map_pred = identify_variable_types(pred_steps)  # output_to_step_map_pred is only used to judge whether an input is a generated variable
-    
+    original_vars_pred, generated_vars_pred, output_to_step_map_pred = identify_variable_types(
+        pred_steps)  # output_to_step_map_pred is only used to judge whether an input is a generated variable
+
     # Dictionary mapping variable names in pred_steps to corresponding variables in gt_steps
     var_map_pred2gt = {}
-    
+
     error_count = 0
     min_len = min(len(gt_steps), len(pred_steps))
-    
+
     for i in range(min_len):
         step_gt = gt_steps[i]
         step_pred = pred_steps[i]
@@ -132,7 +134,7 @@ def compare_exp_steps(gt_steps, pred_steps):
             "status": "✅ success",
             "message": ""
         }
-        
+
         # 1. Check whether the action names match
         if step_gt["action"] != step_pred["action"]:
             detail["status"] = "❌ error"
@@ -140,7 +142,7 @@ def compare_exp_steps(gt_steps, pred_steps):
             error_count += 1
             results["details"].append(detail)
             continue
-            
+
         # 2. Check the set of parameter keys
         keys_gt = set(step_gt["input"].keys())
         keys_pred = set(step_pred["input"].keys())
@@ -150,13 +152,13 @@ def compare_exp_steps(gt_steps, pred_steps):
             error_count += 1
             results["details"].append(detail)
             continue
-        
+
         # 3. Check argument passing
         is_step_error = False  # Flag whether the current step has parameter errors
         for key in keys_gt:
             value_gt = step_gt["input"][key]
             value_pred = step_pred["input"][key]
-            
+
             # Determine whether the parameter is a raw variable or a generated variable
             is_input_var_gt_generated = value_gt in generated_vars_gt
             is_input_var_pred_generated = value_pred in generated_vars_pred
@@ -165,25 +167,27 @@ def compare_exp_steps(gt_steps, pred_steps):
             if is_input_var_gt_generated and is_input_var_pred_generated:
                 # Try mapping variables from pred_steps to the corresponding variables in gt_steps
                 mapped_value_pred = var_map_pred2gt.get(value_pred)
-                
+
                 # If the variable from pred_steps successfully maps to the corresponding variable in gt_steps,
                 # and the mapped value matches the expected value in gt_steps
                 if mapped_value_pred == value_gt:
                     pass  # Match succeeds; continue
                 else:
                     detail["status"] = "❌ error"
-                    detail["message"] += f"Parameter '{key}' generated variable reference mismatch: expected from '{value_gt}', got from '{value_pred}' (mapped as '{mapped_value_pred}'). "
+                    detail[
+                        "message"] += f"Parameter '{key}' generated variable reference mismatch: expected from '{value_gt}', got from '{value_pred}' (mapped as '{mapped_value_pred}'). "
                     is_step_error = True
             # Case 2: Both inputs are raw variables (literals or inputs not defined as function outputs)
             elif not is_input_var_gt_generated and not is_input_var_pred_generated:
                 # For raw variables, do not strictly require identical values; even if values differ, consider it correct
-                pass 
-            # Case 3: Type mismatch (one is a raw variable, the other is a generated variable)
+                pass
+                # Case 3: Type mismatch (one is a raw variable, the other is a generated variable)
             else:
                 detail["status"] = "❌ error"
-                detail["message"] += f"Parameter '{key}' type mismatch: expected {'generated variable' if is_input_var_gt_generated else 'raw variable'}, got {'generated variable' if is_input_var_pred_generated else 'raw variable'}. "
+                detail[
+                    "message"] += f"Parameter '{key}' type mismatch: expected {'generated variable' if is_input_var_gt_generated else 'raw variable'}, got {'generated variable' if is_input_var_pred_generated else 'raw variable'}. "
                 is_step_error = True
-        
+
         # If the current step has no parameter errors, update the variable mapping
         if not is_step_error:
             # Only when the action and parameters both match,
@@ -192,9 +196,9 @@ def compare_exp_steps(gt_steps, pred_steps):
         else:
             # If the step has errors, increment the error count
             error_count += 1
-            
+
         results["details"].append(detail)
-    
+
     # Handle the case where lengths are inconsistent
     if len(gt_steps) != len(pred_steps):
         error_count += abs(len(gt_steps) - len(pred_steps))
@@ -216,9 +220,9 @@ def compare_exp_steps(gt_steps, pred_steps):
                     "status": "❌ error",
                     "message": "Missing step."
                 })
-    
-    results["parameter_acc"] = 1 - (error_count/max(len(gt_steps), len(pred_steps)))
-    
+
+    results["parameter_acc"] = 1 - (error_count / max(len(gt_steps), len(pred_steps)))
+
     return results
 
 
@@ -240,7 +244,7 @@ class SGI_Bench_Wet_Experiment(TextBaseDataset):
         return ["SGI-WetExperiment"]
 
     def load_data(self, dataset):
-        hf = load_dataset("InternScience/SGI-WetExperiment",split="test")
+        hf = load_dataset("InternScience/SGI-WetExperiment", split="test")
 
         rows: List[Dict[str, Any]] = []
         idx = 0
@@ -258,7 +262,6 @@ class SGI_Bench_Wet_Experiment(TextBaseDataset):
             idx += 1
         return pd.DataFrame(rows)
 
-    
     def build_prompt(self, line):
         if isinstance(line, int):
             line = self.data.iloc[line]
@@ -293,7 +296,7 @@ metrics = <Calculate metrics>(
     def evaluate(self, eval_file, **judge_kwargs):
         data = load(eval_file)
         data = pd.DataFrame(data)
-        
+
         data['action_sequence_similarity'] = 0
         data['parameter_accuracy'] = 0
         for index, row in data.iterrows():

@@ -52,3 +52,5 @@ math-verify
 # wrapt_timeout_decorator
 ## chemBench
 loguru
+## SGI Idea Generation
+sentence_transformers
