@@ -46,6 +46,7 @@ scikit-learn
 ## CMPhysBench
 wrapt_timeout_decorator
 latex2sympy2-extended
+pint
 ## PHYSICS
 pylatexenc
 math-verify

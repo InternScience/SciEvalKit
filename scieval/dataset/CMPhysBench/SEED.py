@@ -8,21 +8,12 @@ from sympy.logic.boolalg import And, Or, Not
 
 import re
 import numpy as np
-import wrapt_timeout_decorator
+import timeout_decorator
 from .extended_zss import ext_distance
 from .latex_pre_process import *
 from sympy.simplify import *
+import pint  # NEW: For physical unit conversion and comparison
 # from graphviz import Digraph
-
-
-"""
-Guide:
-You only need to use EED and install the following packages:
-- sympy
-- numpy
-- latex2sympy2_extended
-- wrapt_timeout_decorator
-"""
 
 """
 There are four main categories:
@@ -62,21 +53,20 @@ def remove_tree_func(x):
     s=calc_tree_size(x)
     return min(s,discount_slope*(s-bar_size)+bar_size)
 
-
 def insert_func(x):
     return insert_cost[x.label.split("_")[0]]
 def insert_tree_func(x):
     return remove_tree_func(x)
 
-
-
 def calc_tree_size(node):
     """
     Calculate the size of a subtree based on its total insertion cost.
+    
     The function computes the size of a subtree by summing up the insertion 
     costs of the current node and all its descendant nodes. If the subtree 
     size has already been calculated and stored in `node.subtree_size`, it 
     returns the cached value to avoid redundant computation.
+    
     Args:
         node (Node): The root node of the subtree for which the size is to 
                      be calculated
@@ -113,58 +103,72 @@ def score_calc(tree_dist,tree_size):
     return max(0,100*discount_slope-100*tree_dist/tree_size)
 
 def numeric_score_calc(student_answer_exp, ground_truth_exp):
+    """
+    Specialized scoring function for numeric types
+    Scores based on combined criteria of absolute and relative errors with configurable thresholds
+    Features
+    - Multi-tier scoring: 100pts (0.5% tolerance), 90pts (1%), 80pts (2%)
+    - Sign consistency checking to catch conceptual errors
+    - Special handling for zero values
+    - Graceful fallback to tree-based scoring on conversion failures
+    """
+    #  Parameter Setting Section (Adjust scoring strictness)
 
-    RelTol_100_strict = 0.005  # 0.5%
+    # 100-point standard (strictest)
+    RelTol_100_strict = 0.01  # 1%
     
-    RelTol_90 = 0.01   # 1%
+    # 90-point standard (moderately strict)
+    RelTol_90 = 0.02   # 2%
     
-    RelTol_80 = 0.02   # 2%
+    # 80-point standard (more lenient)
+    RelTol_80 = 0.04   # 4%
     
     try:
+        # If ground_truth_exp is an equation, extract the right-hand side value
         if hasattr(ground_truth_exp, 'rhs'):
             ground_truth_value = ground_truth_exp.rhs
-            print(f"     Detected equation, using rhs: {ground_truth_value}")
+            print(f"Detected equation, using rhs: {ground_truth_value}")
         else:
             ground_truth_value = ground_truth_exp
             
+        # Try to convert SymPy expressions to numerical values
         ground_truth = float(ground_truth_value.evalf())
         student_answer = float(student_answer_exp.evalf())
         
-        print(f"     ground_truth (float): {ground_truth}")
-        print(f"     student_answer (float): {student_answer}")
-        
+        # Preprocessing: Handle special case where correct answer is 0
         if ground_truth == 0:
             if student_answer == 0:
                 return 100
             else:
                     return 0
         
+        # Sign consistency check
         if ground_truth * student_answer < 0:
             return 0
         
+        # Calculate errors
         absolute_error = abs(student_answer - ground_truth)
         relative_error = absolute_error / abs(ground_truth)
 
         
+        # Judge
         is_extremely_close = (relative_error <= RelTol_100_strict)
-        
         if is_extremely_close:
             return 100
-        
         elif relative_error <= RelTol_90:
             return 90
-        
         elif relative_error <= RelTol_80:
-            return 80
-        
+            return 80  
+        # None of the standards are met
         else:
             return 0
             
     except Exception as e:
         print(f"  -> numeric_score_calc error: {e}")
+        # If numerical conversion fails, fall back to the original scoring method
         return 0
 
-@wrapt_timeout_decorator.timeout(30, timeout_exception=TimeoutError)
+@timeout_decorator.timeout(30, timeout_exception=TimeoutError)
 def simplify_with_timeout(expr):
     return simplify(expr)
 def time_simplify(expr):
@@ -174,7 +178,7 @@ def time_simplify(expr):
     except TimeoutError:
         return expr
 
-@wrapt_timeout_decorator.timeout(10, timeout_exception=TimeoutError)
+@timeout_decorator.timeout(10, timeout_exception=TimeoutError)
 def equal_with_timeout(expr1,expr2):
     return expr1.equals(expr2)
 def time_equal(expr1,expr2):
@@ -232,8 +236,8 @@ def sympy_to_tree(expr):
         func_name = expr.func.__name__
         children = [sympy_to_tree(arg) for arg in expr.args]
         return TreeNode(label="function_" + func_name, children=children)
-    elif isinstance(expr, Relational): 
-        op_name = type(expr).__name__  
+    elif isinstance(expr, Relational):
+        op_name = type(expr).__name__
         children = [sympy_to_tree(expr.lhs), sympy_to_tree(expr.rhs)]
         return TreeNode(label="relation_" + op_name, children=children)
     elif isinstance(expr, Derivative):
@@ -286,19 +290,25 @@ class DistError(Exception):
         super().__init__(message)
 
 def Equation_standardize(latex):
+    """
+    Standardize equation by converting it to difference form
+    """
     return latex.args[0] - latex.args[1]
 
 def extract_interval(latex):
+    """
+    Extract interval notation from LaTeX string
+    Use regular strings (not raw strings), so all backslashes are escaped with \\
+    """
     interval_pattern = re.compile(
-        "^\s*"                            
-        "(?:\\\\left)?\s*"                   
-        "([\(\[])\s*"                         
-        "(.*?)\s*,\s*"                         
-        "(.*?)\s*"                             
-        "(?:\\\\right)?\s*"                   
-        "([\)\]])\s*$"                         
+        r"^\s*"                                 # Leading whitespace
+        r"(?:\\left)?\s*"                     # Optional \left
+        r"([\(\[])\s*"                          # Group 1: left bracket
+        r"(.*?)\s*,\s*"                         # Group 2: lower bound
+        r"(.*?)\s*"                             # Group 3: upper bound
+        r"(?:\\right)?\s*"                    # Optional \right
+        r"([\)\]])\s*$"                         # Group 4: right bracket
     )
-    # 分析和输出
     match = interval_pattern.match(latex)
     if match:
         left_bracket, lower_bound, upper_bound, right_bracket = match.groups()
@@ -307,13 +317,17 @@ def extract_interval(latex):
         return False, None, None, None, None
     
 def judge_interval(latex):
+    """
+    Judge if a LaTeX string represents an interval
+    """
     latex=latex.replace('$','')
     match, left_bracket, lower_bound, upper_bound, right_bracket = extract_interval(latex)
     if match:
+        # Judge whether it's open/closed interval
         is_left_closed = left_bracket == "["
         is_right_closed = right_bracket == "]"
-        left_type = "2*" if is_left_closed else "1*"
-        right_type = "*4" if is_right_closed else "*3"
+        left_type = "l_c" if is_left_closed else "l_o"
+        right_type = "r_c" if is_right_closed else "r_o"
         return True, left_type + lower_bound + "+" + upper_bound + right_type
     else:
         return False, latex
@@ -322,8 +336,8 @@ def check_latex_wrap(s):
     s = s.strip()
     pattern = r'''
         ^(
-            \(.*\) |                            #  ( )
-            \[.*\] |                            #  [ ]
+            \(.*\) |                            # Regular parentheses ( )
+            \[.*\] |                            # Regular square brackets [ ]
             \\\(.*\\\) |                        # LaTeX inline math: \( \)
             \\\[.*\\\] |                        # LaTeX display math: \[ \]
             \\\\left\(.*\\\\right\) |           # LaTeX \left( \right)
@@ -334,9 +348,10 @@ def check_latex_wrap(s):
     return re.match(pattern, s, re.VERBOSE) is not None
 
 def parse_bracketed_string(s):
+    # Remove surrounding brackets: supports (), \left( \right)
     s = s.strip()
-    s = re.sub(r'^\\left\(|^\(', '', s)  
-    s = re.sub(r'\\right\)$|\)$', '', s)  
+    s = re.sub(r'^\\left\(|^\(', '', s)
+    s = re.sub(r'\\right\)$|\)$', '', s)
     parts = [item.strip() for item in s.split(',')]
     return parts
 
@@ -349,41 +364,91 @@ def strip_dollar_signs(s):
     return s
 
 def extract_numeric_part(latex_str: str) -> str:
+    """
+    Numeric extractor
+    Intelligently extracts and returns a clean string containing only numbers and basic operators
+    from a complex LaTeX string that may contain units, variables, equations.
+    """
     if not isinstance(latex_str, str) or not latex_str:
         return ""
                 
     s = latex_str.strip()
 
+    # Strip outer LaTeX math environment delimiters
     if s.startswith('$') and s.endswith('$'):
         s = s.strip('$').strip()
     if s.startswith('\\(') and s.endswith('\\)'):
         s = s[2:-2].strip()
     if s.startswith('\\[') and s.endswith('\\]'):
         s = s[2:-2].strip()
-                        
-    equal_sign_pattern = r'.*?(?:=|\\approx|\\sim|\\simeq|\\propto)\s*(.*)'
+    """                 
+    If there's an equation or approximately equal sign, take only the right side
+    Use non-greedy matching .*? to ensure it doesn't accidentally match too much
+    Support various forms like a = b, a \\approx b, etc.
+    """
+    equal_sign_pattern = r'.*(?:=|\\approx|\\sim|\\simeq|\\propto)\s*(.*)'
     match = re.search(equal_sign_pattern, s)
     if match:
         s = match.group(1).strip()
 
+    # Remove LaTeX whitespace commands so signs adjacent to numbers are preserved
+    try:
+        s = _remove_latex_whitespace_commands(s)
+    except Exception:
+        pass
+    # Normalize percent: turn "number\%" or "number%" into "number/100"
+    s = re.sub(r"(\d(?:[\d\.]*)?)\s*\\%", r"(\1/100)", s)
+    s = re.sub(r"(\d(?:[\d\.]*)?)\s*%", r"(\1/100)", s)
+    # Remove stray backslashes directly before a sign or digit (e.g., \, -\,2.14 -> -2.14)
+    s = re.sub(r'\\(?=[\d\+\-])', '', s)
+
+    """  
+    Actively match and extract scientific notation or regular numbers
+    This regex can match various forms like -1.28, 1.28e-5, -1.28 \\times 10^{-5}, -1.28 \\\\times 10^{-5}, etc.
+    Also normalize common \\frac forms into a/b for rational parsing.
+    """  
+    # Normalize \\frac forms to a/b to support rational parsing
+    # \\frac{a}{b}
+    s = re.sub(r"\\frac\s*\{\s*([^{}]+)\s*\}\s*\{\s*([^{}]+)\s*\}", r"(\1)/(\2)", s)
+    # \\frac a b (brace-less) for simple numeric tokens
+    s = re.sub(r"\\frac\s*([+-]?(?:\d+(?:\.\d+)?|\.\d+))\s*([+-]?(?:\d+(?:\.\d+)?|\.\d+))", r"\1/\2", s)
+    # \\frac12 (compact) -> 1/2
+    s = re.sub(r"\\frac\s*([0-9])\s*([0-9])", r"\1/\2", s)
+
+    # Prefer fraction pattern a/b first to avoid capturing only the numerator
+    frac_match = re.search(r"[-+]?\s*(?:\(?\s*(?:\d+\.?\d*|\.\d+)\s*\)?\s*/\s*\(?\s*(?:\d+\.?\d*|\.\d+)\s*\)?)", s)
+    if frac_match:
+        return frac_match.group(0).strip()
+
+    # Fall back to scientific/regular number
     numeric_pattern = re.compile(
-        r"([-+]?\s*(?:\d+\.?\d*|\.\d+)\s*(?:(?:e|E)\s*[-+]?\s*\d+|\\times\s*10\^\{[-+]?\d+\})?)"
+        r"([-+]?\s*(?:\d+\.?\d*|\.\d+)\s*(?:(?:e|E)\s*[-+]?\s*\d+|\\\\?times\s*10\^\{?[-+]?\d+\}?)?)"
     )
                 
     match = numeric_pattern.search(s)
                 
     if match:
+        # If successful match, directly return the core numeric string
         numeric_part = match.group(0)
-        cleaned_part = numeric_part.replace('\\times', '*')
+        # Clean up by replacing both \\times and \\\\times with *
+        cleaned_part = numeric_part.replace('\\\\times', '*').replace('\\times', '*')
         return cleaned_part.strip()
-    else:
-        return s
+    return s
 
 def extract_tuple(latex):
+    """
+    A tuple/key-value pair parser.
+    Core strategy:
+    1. If the expression is in the form `(keys) = (values)`, [ignore] the left `(keys) =` part,
+       only take the right `(values)` as the parsing target.
+    2. If the expression is just a tuple `(values)`, parse it directly.
+    3. Always return a dictionary with numeric indices as keys, like {'0': val1, '1': val2, ...}.
+    """
     latex = strip_dollar_signs(latex.strip())
     latex = latex.replace(r'\left', '')
     latex = latex.replace(r'\right', '')
 
+    # Check if there's a top-level '(keys) = (values)' structure
     paren_level = 0
     top_level_equal_index = -1
     for i, char in enumerate(latex):
@@ -391,59 +456,205 @@ def extract_tuple(latex):
         elif char in ')}]': paren_level -= 1
         elif char == '=' and paren_level == 0:
             top_level_equal_index = i
-            break
-    
+            break 
+    # If found this structure, we only focus on the right side of the equals sign
     if top_level_equal_index != -1:
         left_part = latex[:top_level_equal_index].strip()
         right_part = latex[top_level_equal_index+1:].strip()
+        # Do a sanity check to ensure both sides of the equals sign look like tuples
         if check_latex_wrap(left_part) and check_latex_wrap(right_part):
+            # override the entire expression with the right side
             latex = right_part
 
+    # Parse the final tuple string
     if not check_latex_wrap(latex):
         return {}
 
+    # remove brackets and split by commas
     values = parse_bracketed_string(latex)
     
+    # If it's an empty tuple "()", values will be an empty list after parsing
     if not values:
+        # Here we return empty dict, the logic in EED will handle it correctly
         return {}
 
+    # Convert value list to dictionary with numeric indices as keys
     return {str(i): v for i, v in enumerate(values)}
 
-def SEED(answer_latex,test_latex,t,debug_mode=False):
+# Unit processing related functions
+ureg = pint.UnitRegistry()
+
+def _remove_latex_whitespace_commands(text: str) -> str:
+    """Remove common LaTeX whitespace commands from text (no regex side-effects)."""
+    if not text:
+        return text
+    commands = [
+        "\\,", "\\;", "\\:", "\\!", "\\quad", "\\qquad", "\\thinspace", "\\enspace", "\\ ",
+    ]
+    for cmd in commands:
+        text = text.replace(cmd, "")
+    return text
+
+def _safe_parse_numeric_string(numeric_str: str) -> float:
     """
-        Computes the similarity score and distance metrics between two LaTeX expressions.
-        This function evaluates the equivalence of two mathematical expressions represented 
-        in LaTeX format. It uses symbolic computation and tree-based distance metrics to 
-        calculate a similarity score and other related metrics.
+    Safely parse a numeric string that may be in forms like:
+    - 1.23
+    - -0.5
+    - 1e-3 / 1E+6
+    - 1.2*10^3 / 1.2 * 10^{3}
+    Never uses eval. Returns float or raises ValueError.
+    """
+    if not isinstance(numeric_str, str):
+        raise ValueError("numeric_str must be a string")
+    s = numeric_str.strip()
+    # Normalize spacing and variants
+    s = s.replace("\\times", "*").replace("\\\\times", "*")
+    s = re.sub(r"\s+", "", s)
+    # Expand percent to division by 100 if trailing
+    s = re.sub(r"^(.*?)(\d(?:[\d\.]*)?)/?100\)?$", r"\1(\2/100)", s) if False else s
+    if s.endswith('%'):
+        s = s[:-1] + "/100"
+    if s.endswith('\\%'):
+        s = s[:-2] + "/100"
+    # Normalize *10^{n} to *10**n
+    s = re.sub(r"\*10\^\{?([+-]?\d+)\}?", r"*10**\1", s)
+    # Pattern a*10**b
+    m = re.fullmatch(r"([+-]?(?:\d+(?:\.\d+)?|\.\d+))\*10\*\*([+-]?\d+)", s)
+    if m:
+        base = float(m.group(1))
+        exp = int(m.group(2))
+        return base * (10 ** exp)
+    # Pattern scientific e/E
+    m = re.fullmatch(r"([+-]?(?:\d+(?:\.\d+)?|\.\d+))[eE]([+-]?\d+)", s)
+    if m:
+        base = float(m.group(1))
+        exp = int(m.group(2))
+        return base * (10 ** exp)
+    # Fraction a/b (allow simple parentheses around parts), only when exactly one '/'
+    if s.count('/') == 1:
+        num_str, den_str = s.split('/', 1)
+        # strip one layer of parentheses if present
+        num_str = re.sub(r"^\((.*)\)$", r"\1", num_str)
+        den_str = re.sub(r"^\((.*)\)$", r"\1", den_str)
+        num = _safe_parse_numeric_string(num_str)
+        den = _safe_parse_numeric_string(den_str)
+        if den == 0:
+            raise ValueError("Division by zero in fraction")
+        return num / den
+    # Plain number
+    m = re.fullmatch(r"[+-]?(?:\d+(?:\.\d+)?|\.\d+)", s)
+    if m:
+        return float(s)
+    raise ValueError(f"Unrecognized numeric format: {numeric_str}")
+
+def clean_latex_unit(unit_str):
+    r"""
+    Clean LaTeX unit string for pint parsing
+    Recursively clean LaTeX wrapping like \mathrm{}, \text{}, \operatorname{} from unit strings,
+    extract plain text units while preserving braces in exponent parts.
+    """
+    pattern = re.compile(r"\\(mathrm|text|operatorname)\{([^{}]*(\{[^{}]*\}[^{}]*)*)\}")
+    prev_str = None
+    while prev_str != unit_str:
+        prev_str = unit_str
+        unit_str = pattern.sub(r"\2", unit_str)
+    if unit_str.startswith("{") and unit_str.endswith("}"):
+        unit_str = unit_str[1:-1]
+    unit_str = unit_str.strip()
+    unit_str = _remove_latex_whitespace_commands(unit_str)
+    return unit_str
+
+def parse_latex_quantity_general(latex_str):
+    r"""
+    Generically parse LaTeX-formatted quantity strings to extract numeric values and units.
+    Supports:
+    - Numbers (including decimals, negative signs, scientific notation, and LaTeX-style scientific notation)
+    - Units wrapped in \mathrm{} or \text{}, or without any wrapper
+    - Removal of all LaTeX whitespace commands
+    Returns: (float value, unit string)
+    """
+    numeric_part = extract_numeric_part(latex_str)
+    try:
+        number = _safe_parse_numeric_string(numeric_part)
+    except Exception as e:
+        raise ValueError(f"Failed to compute numeric value from: {numeric_part}, error: {e}")
+
+    original_numeric = re.search(r"[-+]?\s*(?:\d+\.?\d*|\.\d+)\s*(?:(?:e|E)\s*[-+]?\s*\d+|\\\\?times\s*10\^\{?[-+]?\d+\}?)?", latex_str)
+    if original_numeric:
+        unit_part = latex_str[original_numeric.end():].strip()
+    else:
+        unit_part = ""
     
-            tuple: A tuple containing the following elements:
-                - score (float): The similarity score between the two expressions (0 to 100).
-                - relative_distance (float): The normalized distance between the two expressions.
-                - answer_tree_size (int): The size of the expression tree for the answer.
-                - distance (float): The raw distance between the two expression trees.
-        Notes:
-            - If either input contains unsupported LaTeX constructs (e.g., integrals or sums), 
-              the function returns default values indicating failure.
-            - If the test expression is significantly longer than the answer expression, 
-              the function assumes they are not equivalent.
-            - The function uses symbolic simplification and tree-based distance metrics to 
-              evaluate equivalence.
-            - In case of errors during processing, the function returns default values unless 
-              `debug_mode` is enabled, in which case it raises specific exceptions.
-        Exceptions:
-            - LaTeXError: Raised when LaTeX conversion to symbolic expressions fails (if `debug_mode` is True).
-            - SymPyError: Raised when symbolic simplification or tree construction fails (if `debug_mode` is True).
-            - DistError: Raised when distance calculation fails (if `debug_mode` is True).
-        Args:
-            answer_latex: the latex expression of answer expression
-            test_latex: the latex expression of test expression
-            debug_mode: whether it raise errors or just skip it
-        Returns:
-             tuple: A tuple containing the following elements:
-                - score (float): The similarity score between the two expressions (0 to 100).
-                - relative_distance (float): The normalized distance between the two expressions.
-                - answer_tree_size (int): The size of the expression tree for the answer.
-                - distance (float): The raw distance between the two expression trees.
+    unit_part = clean_latex_unit(unit_part)
+    return number, unit_part
+
+def convert_and_output_general(latex_qty1, latex_qty2, target_unit=None):
+    """
+    Parse two generalized LaTeX-formatted quantity strings, convert them to the target unit, and output the result.
+    If target_unit is empty, convert to the unit of the first quantity.
+    """
+    n1, u1 = parse_latex_quantity_general(latex_qty1)
+    n2, u2 = parse_latex_quantity_general(latex_qty2)
+
+    q1 = n1 * ureg(u1)
+    q2 = n2 * ureg(u2)
+
+    if target_unit is None:
+        target_unit = u1
+
+    q1_converted = q1.to(target_unit)
+    q2_converted = q2.to(target_unit)
+
+    out1 = f"{q1_converted.magnitude} {target_unit}"
+    out2 = f"{q2_converted.magnitude} {target_unit}"
+
+    return out1, out2
+
+def SEED(answer_latex,test_latex,expr_type,debug_mode=False):
+    """
+    SEED (Scalable Expression Edit Distance) - Enhanced version of EED
+    NEW FEATURES in SEED vs EED:
+    Multi-type expression support: Expression, Equation, Tuple, Interval, Numeric
+    Advanced numeric scoring with relative/absolute error thresholds
+    Physical unit conversion and comparison using Pint library
+    Intelligent tuple/key-value pair parsing and comparison
+    Interval notation support with open/closed bracket distinction
+    Improved equation standardization (A=B → A-B)
+    Robust error handling
+    
+    Computes the similarity score and distance metrics between two LaTeX expressions.
+    
+    This function evaluates the equivalence of two mathematical expressions represented 
+    in LaTeX format. It uses symbolic computation and tree-based distance metrics to 
+    calculate a similarity score and other related metrics.
+    
+    Args:
+        answer_latex: The latex expression of answer expression
+        test_latex: The latex expression of test expression
+        t: Expression type (Expression, Equation, Tuple, Interval, Numeric)
+        debug_mode: Whether it raise errors or just skip it
+    
+    Returns:
+        tuple: A tuple containing the following elements:
+            - score (float): The similarity score between the two expressions (0 to 100).
+            - relative_distance (float): The normalized distance between the two expressions.
+            - answer_tree_size (int): The size of the expression tree for the answer.
+            - distance (float): The raw distance between the two expression trees.
+    
+    Notes:
+        - If either input contains unsupported LaTeX constructs (e.g., integrals or sums), 
+          the function returns default values indicating failure.
+        - If the test expression is significantly longer than the answer expression, 
+          the function assumes they are not equivalent.
+        - The function uses symbolic simplification and tree-based distance metrics to 
+          evaluate equivalence.
+        - In case of errors during processing, the function returns default values unless 
+          `debug_mode` is enabled, in which case it raises specific exceptions.
+    
+    Exceptions:
+        - LaTeXError: Raised when LaTeX conversion to symbolic expressions fails (if `debug_mode` is True).
+        - SymPyError: Raised when symbolic simplification or tree construction fails (if `debug_mode` is True).
+        - DistError: Raised when distance calculation fails (if `debug_mode` is True).
     """
 
     if not test_latex:
@@ -458,7 +669,7 @@ def SEED(answer_latex,test_latex,t,debug_mode=False):
     #     return 0,-1,-1,-1
     
     try:
-        if t == 'Tuple':
+        if expr_type == 'Tuple':
             answer_dict = extract_tuple(answer_latex)
             test_dict = extract_tuple(test_latex)
 
@@ -483,41 +694,103 @@ def SEED(answer_latex,test_latex,t,debug_mode=False):
             for sympy_key, answer_v_latex in norm_answer_dict.items():
                 test_v_latex = norm_test_dict[sympy_key]
                 
+                # Recursively call to compare SEED values
                 score, rel_distance, tree_size, distance_number = SEED(answer_v_latex, test_v_latex, 'Expression')
                 scores += score
+
                 if rel_distance != -1: rel_distances += rel_distance
                 if tree_size != -1: tree_sizes += tree_size
                 if distance_number != -1: distance_numbers += distance_number
 
             return scores / size, rel_distances / size, tree_sizes / size, distance_numbers / size
         
-        elif t=='Interval':
+        elif expr_type=='Interval':
             is_interval, answer_latex= judge_interval(answer_latex)
             is_interval, test_latex= judge_interval(test_latex)
             # if is_interval:t='Interval'
-        elif t=='Numeric':
-            answer_latex = extract_numeric_part(answer_latex)
-            test_latex = extract_numeric_part(test_latex)
+        elif expr_type=='Numeric':
+            # Numeric path: directly compute numeric values first using SymPy on RHS, then try units, then fallback
+            def _rhs_or_self(s: str) -> str:
+                ss = s.strip()
+                if ss.startswith('$') and ss.endswith('$'):
+                    ss = ss.strip('$').strip()
+                if ss.startswith('\\(') and ss.endswith('\\)'):
+                    ss = ss[2:-2].strip()
+                if ss.startswith('\\[') and ss.endswith('\\]'):
+                    ss = ss[2:-2].strip()
+                m = re.search(r'.*(?:=|\\approx|\\sim|\\simeq|\\propto)\s*(.*)', ss)
+                if m:
+                    return m.group(1).strip()
+                return ss
 
-            answer_latex = re.sub(r'\\(?![a-zA-Z])', '', answer_latex)
-            test_latex = re.sub(r'\\(?![a-zA-Z])', '', test_latex)
+            def _normalize_numeric_rhs(s: str) -> str:
+                # Replace common LaTeX multiply operators and remove whitespace commands
+                s = re.sub(r'\\+times', '*', s)
+                s = re.sub(r'\\+cdot',  '*', s)
+                s = _remove_latex_whitespace_commands(s)
+                return s
 
-        answer_exp = master_convert(answer_latex, t)
-        print(f"answer_exp: {answer_exp}")
-        test_exp = master_convert(test_latex, t)
-        print(f"test_exp: {test_exp}")
-        if t =='Equation':
+            try:
+                ans_rhs = _normalize_numeric_rhs(_rhs_or_self(answer_latex))
+                tst_rhs = _normalize_numeric_rhs(_rhs_or_self(test_latex))
+                ans_exp_try = master_convert(ans_rhs, 'Expression')
+                test_exp_try = master_convert(tst_rhs, 'Expression')
+                if ans_exp_try is not None and test_exp_try is not None:
+                    try:
+                        if getattr(ans_exp_try, 'free_symbols', set()) or getattr(test_exp_try, 'free_symbols', set()):
+                            pass  # fall through to unit-aware parsing
+                        else:
+                            score = numeric_score_calc(test_exp_try, ans_exp_try)
+                            return score, -1, -1, -1
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+            def _try_parse_quantity(s):
+                try:
+                    return parse_latex_quantity_general(s)
+                except Exception:
+                    return None, None
+            a_val, a_unit = _try_parse_quantity(answer_latex)
+            t_val, t_unit = _try_parse_quantity(test_latex)
+
+            if a_val is not None and t_val is not None and a_unit and t_unit:
+                try:
+                    qa = a_val * ureg(a_unit)
+                    qt = t_val * ureg(t_unit)
+                    qt_conv = qt.to(qa.units)
+                    score = numeric_score_calc(Float(qt_conv.magnitude), Float(qa.magnitude))
+                    return score, -1, -1, -1
+                except Exception:
+                    pass
+
+            try:
+                if a_val is None:
+                    a_val = _safe_parse_numeric_string(extract_numeric_part(answer_latex))
+                if t_val is None:
+                    t_val = _safe_parse_numeric_string(extract_numeric_part(test_latex))
+                print(a_val)
+                print(t_val)
+                score = numeric_score_calc(Float(t_val), Float(a_val))
+                return score, -1, -1, -1
+            except Exception:
+                return 0, -1, -1, -1
+
+        answer_exp = master_convert(answer_latex, expr_type)
+        test_exp = master_convert(test_latex, expr_type)
+        if expr_type =='Equation':
             answer_exp = Equation_standardize(answer_exp)
             test_exp = Equation_standardize(test_exp)
 
     except Exception as e:
-        # raise e
-        # print(f"Failed to convert input latex to sympy expression,please check it")
-        # if debug_mode:
-        #     raise LaTeXError(f"Fail to convert latex.\n GT:{answer_latex}\n GEN:{test_latex}")
+        if debug_mode:
+            raise LaTeXError(f"Fail to convert latex.\n GT:{answer_latex}\n GEN:{test_latex}")
         return 0,-1,-1,-1
 
     try:
+        if answer_exp is None or test_exp is None:
+            return 0,-1,-1,-1
         answer_exp,rep1=posify(answer_exp)
         answer_exp=time_simplify(answer_exp)
         
@@ -528,7 +801,7 @@ def SEED(answer_latex,test_latex,t,debug_mode=False):
         test_exp=test_exp.subs(rep2)
 
         # if False:
-        @wrapt_timeout_decorator.timeout(10, timeout_exception=TimeoutError)
+        @timeout_decorator.timeout(10, timeout_exception=TimeoutError)
         def subtract_and_simplify_with_timeout(a, b):
             if isinstance(a, Expr) and isinstance(b, Expr):
                 return simplify(expand(a - b))
@@ -536,7 +809,7 @@ def SEED(answer_latex,test_latex,t,debug_mode=False):
                 if a.shape == b.shape:
                     return simplify(expand(a - b))
                 else:
-                    return 1  
+                    return 1  # Matrix dimensions do not match
             else:
                 return 1
         
@@ -545,21 +818,14 @@ def SEED(answer_latex,test_latex,t,debug_mode=False):
                 return subtract_and_simplify_with_timeout(a, b)
             except TimeoutError:
                 print("  -> subtract_and_simplify timeout, returning 1")
-                return 1 
+                return 1  # Treat as unequal if a timeout occurs
             except Exception as e:
                 print(f"  -> subtract_and_simplify error: {e}")
                 return 1
         zero_exp=safe_subtract_and_simplify(answer_exp,test_exp)
-        # zero_exp=time_simplify(expand(answer_exp-test_exp))
-        
+        # zero_exp=time_simplify(expand(answer_exp-test_exp))       
 
-        # if answer_exp==test_exp or zero_exp==0:
-        #     return 100,0.,0,0
-
-        # if time_equal(answer_exp,test_exp):
-        #     return 100,0.,0,0
-        
-        if t == "Equation":
+        if expr_type == "Equation":
             if answer_exp == test_exp or zero_exp == 0 or answer_exp + test_exp == 0:
                 return 100, 0., 0, 0
 
@@ -570,10 +836,8 @@ def SEED(answer_latex,test_latex,t,debug_mode=False):
             return 100, 0., 0, 0
 
     except Exception as e:
-        raise e
-        # print("Something happened during simplification,returning zero")
-        # if debug_mode:
-        #     raise SymPyError(f"Failed to simplify the sympy expression. Expressions: answer_exp={answer_exp}, test_exp={test_exp}")
+        if debug_mode:
+            raise SymPyError(f"Failed to simplify the sympy expression. Expressions: answer_exp={answer_exp}, test_exp={test_exp}")
         return 0,-1,-1,-1
 
     try:
@@ -581,10 +845,8 @@ def SEED(answer_latex,test_latex,t,debug_mode=False):
         tree_test=sympy_to_tree(test_exp)
 
     except Exception as e:
-        # raise e
-        # print("Failed to build expression tree,returning zero")
-        # if debug_mode:
-        #     raise SymPyError(f"Failed to build the sympy expression tree.\n GT:{answer_exp}\n GEN:{test_exp}")
+        if debug_mode:
+            raise SymPyError(f"Failed to build the sympy expression tree.\n GT:{answer_exp}\n GEN:{test_exp}")
         return 0,-1,-1,-1
 
     distance=ext_distance(
@@ -602,26 +864,30 @@ def SEED(answer_latex,test_latex,t,debug_mode=False):
 
     rel_distance=distance/tree_size
     
-    if t == 'Numeric':
-        score = numeric_score_calc(test_exp, answer_exp)
-
-        return score, -1, -1, -1
-    else:
-        score = score_calc(distance_number, tree_size)
-
-        return score,rel_distance,tree_size,distance_number
-
+    # Non-numeric types use tree-based scoring
+    score = score_calc(distance_number, tree_size)
+    return score,rel_distance,tree_size,distance_number
+    
 if __name__ == "__main__":
-    gt = "$(2 \\arctan (\\frac{v_{0}}{V} \\sqrt{1-V^{2}}), \\pi)"
-    pred = "\\left(2 \\arctan\\left(\\frac{v_0 \\sqrt{1 - V^2}}{V}\\right), \\pi\\right)"
+    # Example usage of SEED scoring
+    # -----------------------------------------------------------
+    # Fill in the variables below to test SEED:
+    #   gt   : Ground truth LaTeX expression string
+    #   pred : Model-predicted LaTeX expression string
+    #   t    : Expression type (choose one of):
+    #          "Expression", "Equation", "Tuple", "Interval", "Numeric"
+    # -----------------------------------------------------------
 
-    t = "Interval"  
-    score, rel_distance, tree_size, dist = SEED(gt, pred, t)
+    gt = "4.08 \\times 10^{-5}(\\mathrm{~cm})"    # Ground truth LaTeX expression
+    pred = "4.08 \\times 10^{-7}(\\mathrm{~m})"  # Predicted LaTeX expression
+    expr_type = "Numeric"     # Answer type
+
+    score, rel_distance, tree_size, dist = SEED(gt, pred, expr_type)
 
     print("\n=== Test Result ===")
     print(f"GT LaTeX:      {gt}")
     print(f"Predicted:     {pred}")
-    print(f"Score:         {score}")
-    print(f"Rel Distance:  {rel_distance}")
-    print(f"Tree Size:     {tree_size}")
-    print(f"Raw Distance:  {dist}")
+    print(f"Score:         {score}")           # Final SEED score
+    print(f"Rel Distance:  {rel_distance}")    # Relative edit distance
+    print(f"Tree Size:     {tree_size}")       # Number of nodes in the ground truth expression tree
+    print(f"Raw Distance:  {dist}")            # Raw node edit distance

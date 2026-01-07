@@ -3,7 +3,6 @@
 from latex2sympy2_extended import *
 from sympy import simplify
 import timeout_decorator
-import wrapt_timeout_decorator
 
 import re
 
@@ -425,6 +424,11 @@ def first_pre_process(s,t,extract_box=True):
     if '\\quad' in boxed_content:
         boxed_content = boxed_content.split('\\quad')[0]
 
+    if '\\qquad' in boxed_content:
+        boxed_content = boxed_content.split('\\qquad')[0]
+
+        boxed_content = boxed_content.strip(' \\') 
+
     if t == "Equation":
         last_equal_content = boxed_content
     else:
@@ -673,6 +677,7 @@ def second_pre_process(s):
         ('\\dagger','\\bar{dagger}'),
         ('\\operatorname{dim}','\\bar{dim}'),
         ('\\overleftarrow','\\bar{overleftarrow}'),
+        ('\;',' '),
         (';','\\bar{CD}'),
         ('\\partial','\\bar{partial}'),
         ('\\perp','\\bar{perp}'),
@@ -760,7 +765,7 @@ def second_pre_process(s):
     s=convert_vec_syntax(s)
     s=exp_frac(s)
     if s and s[-1] == '.':
-        return s[:-1]
+        s = s[:-1]
     s = s.replace(r'\varkappa', r'\kappa')
     # First replace derivative forms to avoid parsing errors
     s = replace_derivative_frac_preserve_frac(s)
@@ -848,7 +853,7 @@ def replace_derivative_frac_preserve_frac(expr: str) -> str:
 
     return re.sub(pattern, repl, expr, flags=re.VERBOSE)
 
-@wrapt_timeout_decorator.timeout(10, timeout_exception=TimeoutError,use_signals=False)
+@timeout_decorator.timeout(10, timeout_exception=TimeoutError)
 def master_convert_with_timeout(s, t):
     """Master convert with timeout protection"""
     s = re.sub(r'~', '', s)
