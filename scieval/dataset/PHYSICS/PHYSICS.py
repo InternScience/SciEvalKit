@@ -119,7 +119,7 @@ class PHYSICS(TextBaseDataset):
     Problem: {{prompt}}"""
 
         # 获取问题文本（支持 Series 或 dict）
-        prompt_text = line["question"] if isinstance(line, dict) else line
+        prompt_text = line["question"]
 
         # 应用指令模板
         prompt_text = Template(INSTRUCTION_TEMPLATE).render(prompt=prompt_text)
