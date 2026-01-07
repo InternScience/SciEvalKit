@@ -7,6 +7,7 @@ A unified evaluation toolkit and leaderboard for rigorously assessing the scient
 <hr style="width:100%;margin:16px 0;border:0;border-top:0.1px solid #d0d7de;" />
 
 <div align="center">
+
 [![Tutorial](https://img.shields.io/badge/Tutorial-SciEval-b8dcff?style=for-the-badge&logo=google-chrome&logoColor=white)](https://scievalkit-docs.readthedocs.io/en/latest)&#160;
 [![Leaderboard](https://img.shields.io/badge/LEADERBOARD-Scieval-f6e58d?style=for-the-badge&logo=huggingface)](https://opencompass.org.cn/Intern-Discovery-Eval/rank)&#160;
 [![Report](https://img.shields.io/badge/REPORT-Technical-f4c2d7?style=for-the-badge)](https://arxiv.org/abs/2512.22334)&#160;
