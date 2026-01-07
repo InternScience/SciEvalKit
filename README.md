@@ -7,10 +7,11 @@ A unified evaluation toolkit and leaderboard for rigorously assessing the scient
 <hr style="width:100%;margin:16px 0;border:0;border-top:0.1px solid #d0d7de;" />
 
 <div align="center">
-[![Tutorial](https://img.shields.io/badge/Tutorial-SciEval-b8dcff?style=for-the-badge&logo=google-chrome&logoColor=white)](https://scievalkit-docs.readthedocs.io/zh-cn/latest)&#160;
+[![Tutorial](https://img.shields.io/badge/Tutorial-SciEval-b8dcff?style=for-the-badge&logo=google-chrome&logoColor=white)](https://scievalkit-docs.readthedocs.io/en/latest)&#160;
 [![Leaderboard](https://img.shields.io/badge/LEADERBOARD-Scieval-f6e58d?style=for-the-badge&logo=huggingface)](https://opencompass.org.cn/Intern-Discovery-Eval/rank)&#160;
 [![Report](https://img.shields.io/badge/REPORT-Technical-f4c2d7?style=for-the-badge)](https://arxiv.org/abs/2512.22334)&#160;
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-c7b9e2?style=for-the-badge&logo=github&logoColor=white)](https://github.com/InternScience/SciEvalKit)
+
 <img src="assets/icon/welcome.png" alt="welcome" height="24" style="vertical-align:middle;" />
 &nbsp;Welcome to the official repository of <strong>SciEval</strong>!
 
@@ -31,7 +32,7 @@ Its design is shaped by following core ideas:
 - **Capability‑oriented & reproducible ▸** A unified toolkit for **dataset construction, prompt engineering, inference, and expert‑aligned scoring** ensures transparent and repeatable comparisons.  
 - **Grounded in real scenarios ▸** Benchmarks use domain‑specific data and tasks so performance reflects **actual scientific practice**, not synthetic proxies.
 
-For a detailed and systematic introduction to SciEvalKit, please refer to the [SciEvalKit Tutorial](https://scievalkit-docs.readthedocs.io/en/latest/Quickstart.html).
+For a detailed and systematic introduction to SciEvalKit, please refer to the [SciEvalKit Tutorial](https://scievalkit-docs.readthedocs.io/en/latest).
 
 
 ## <img src="assets/icon/progress.png" alt="progress" height="28" style="vertical-align:middle;" />&nbsp;Progress in Scientific Intelligence
@@ -87,7 +88,7 @@ For a detailed and systematic introduction to SciEvalKit, please refer to the [S
 
 ## <img src="assets/icon/start.png" alt="start" height="28" style="vertical-align:middle;" />&nbsp;Quick Start
 
-Get from clone to first scores in minutes&mdash;see our local [QuickStart](docs/en/Quickstart.md) / [快速开始](docs/zh-CN/Quickstart.md) guides, or consult the [SciEvalKit Tutorial](https://scievalkit-docs.readthedocs.io/en/latest/Quickstart.html) for additional reference.
+Get from clone to first scores in minutes&mdash;see our local [QuickStart](docs/en/Quickstart.md) / [快速开始](docs/zh-CN/Quickstart.md) guides, or refer to the [SciEvalKit Tutorial](https://scievalkit-docs.readthedocs.io/en/latest/Quickstart.html) for additional guidance.
 
 ### 1 · Install
 
