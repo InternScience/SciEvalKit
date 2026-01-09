@@ -211,3 +211,6 @@ GPT4o_MINI/
 tools/*
 tmp_*/*
 vlmeval/dataset/SciCode/eval/data/*.h5
+# SciEvalKit local eval artifacts
+FrontierScience_*_pred*.pkl
+FrontierScience_*_pred*.csv
