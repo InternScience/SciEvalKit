@@ -10,7 +10,7 @@ from ..text_base import TextBaseDataset
 
 
 class SciCode(TextBaseDataset):
-    """SciCode benchmark for VLMEvalKit (text-only).
+    """SciCode benchmark.
 
     Each *sub-step* of a SciCode problem is exposed as one evaluation item.
     - `build_prompt` reproduces the official prompt construction.

@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from ..agents.base import EvalSample
 from ..smp import *
 
 
@@ -81,6 +82,28 @@ class TextBaseDataset:
         msgs = []
         msgs.append(dict(type='text', value=question))
         return msgs
+
+    def build_agent_sample(self, idx):
+        line = self.data.iloc[idx] if isinstance(idx, int) else idx
+        messages = self.build_prompt(line)
+        if isinstance(messages, str):
+            prompt = messages
+        elif not isinstance(messages, list):
+            prompt = str(messages)
+        else:
+            parts = []
+            for msg in messages:
+                if isinstance(msg, dict):
+                    if msg.get("type") == "text":
+                        parts.append(msg.get("value") or msg.get("text") or "")
+                    elif "text" in msg:
+                        parts.append(msg["text"])
+            prompt = "\n".join([p for p in parts if p])
+        metadata = {"index": str(line.get("index", idx))}
+        return EvalSample(prompt=prompt, metadata=metadata)
+
+    def score_agent_sample(self, idx, final_answer, **judge_kwargs):
+        raise NotImplementedError("Dataset does not support sample-level evaluation.")
 
     # Given the prediction file, return the evaluation results in the format of a dictionary or pandas dataframe
     @abstractmethod
