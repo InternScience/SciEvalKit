@@ -114,6 +114,33 @@ def run_agent_eval(
 
     results: List[Tuple[int, Dict[str, Any], str]] = []
     tasks = list(range(len(dataset)))
+    tasks_to_run = tasks
+    if reuse:
+        tasks_to_run = []
+        for idx in tasks:
+            if do_eval:
+                eval_cached = store.load_eval(idx)
+                if eval_cached is not None:
+                    cached_score = eval_cached.get("score", eval_cached)
+                    cached_final = eval_cached.get("final_answer", "")
+                    if not cached_final:
+                        traj = store.load_traj(idx)
+                        if traj is not None:
+                            cached_final = traj.get("final_answer", "")
+                    results.append((idx, cached_score, cached_final))
+                    continue
+                tasks_to_run.append(idx)
+                continue
+
+            if do_infer:
+                traj = store.load_traj(idx)
+                if traj and traj.get("success"):
+                    results.append((idx, {}, traj.get("final_answer", "")))
+                else:
+                    tasks_to_run.append(idx)
+            else:
+                tasks_to_run.append(idx)
+
     if nproc > 1:
         with ThreadPoolExecutor(max_workers=nproc) as executor:
             futures = [
@@ -128,15 +155,15 @@ def run_agent_eval(
                     do_infer,
                     do_eval,
                 )
-                for idx in tasks
+                for idx in tasks_to_run
             ]
-            with tqdm(total=len(tasks), desc="Agent Eval", unit="sample") as pbar:
+            with tqdm(total=len(tasks_to_run), desc="Agent Eval", unit="sample") as pbar:
                 for fut in as_completed(futures):
                     results.append(fut.result())
                     pbar.update(1)
     else:
-        with tqdm(total=len(tasks), desc="Agent Eval", unit="sample") as pbar:
-            for idx in tasks:
+        with tqdm(total=len(tasks_to_run), desc="Agent Eval", unit="sample") as pbar:
+            for idx in tasks_to_run:
                 results.append(
                     _run_one_sample(
                         idx, agent, dataset, store, judge_kwargs, reuse, do_infer, do_eval
