@@ -773,7 +773,7 @@ class ResearchbenchGenerate(TextBaseDataset):
             "avg_score": avg_score/5,
             "score_dist": dist,
             "judged_file": judged_path,
-            "judge_model": eval_model
+            "judge_model": eval_model.model
         }
         # 将字典数据写入 JSON 文件
         with open(result_file_path, "w") as f:

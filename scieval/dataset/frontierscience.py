@@ -104,7 +104,7 @@ def _extract_final_answer(text: str) -> str:
     for m in _RE_FINAL.finditer(text):
         last = m
     if last:
-        ans = (last.group(2) or "").strip()
+        ans = (last.group(1) or "").strip()
         if ans:
             return ans
     # fallback: last non-empty line

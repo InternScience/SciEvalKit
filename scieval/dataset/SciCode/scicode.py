@@ -161,7 +161,7 @@ class SciCode(TextBaseDataset):
         """
         # 1) Load predictions
         pred_df = load(eval_file)
-        if isinstance(pred_df, dict):
+        if isinstance(pred_df, (dict, list)):
             pred_df = pd.DataFrame(pred_df)
         id_col = None
         for c in ("id", "question_id"):
