@@ -206,13 +206,13 @@ def load_env():
     try:
         import scieval
     except ImportError:
-        logging.error('VLMEval is not installed. Failed to import environment variables from .env file. ')
+        logging.warning('VLMEval is not installed. Failed to import environment variables from .env file. ')
         return
     pth = osp.realpath(scieval.__path__[0])
     pth = osp.join(pth, '../.env')
     pth = osp.realpath(pth)
     if not osp.exists(pth):
-        logging.error(f'Did not detect the .env file at {pth}, failed to load. ')
+        logging.warning(f'Did not detect the .env file at {pth}, failed to load. ')
         return
 
     from dotenv import dotenv_values

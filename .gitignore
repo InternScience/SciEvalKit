@@ -211,3 +211,6 @@ GPT4o_MINI/
 tools/*
 tmp_*/*
 vlmeval/dataset/SciCode/eval/data/*.h5
+
+# EarthLink file
+variables_embedding.jsonl

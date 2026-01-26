@@ -1,5 +1,30 @@
-from scieval.dataset import *
 from functools import partial
+
+# Import specific video dataset classes directly to avoid circular imports
+# These imports bypass __init__.py which imports this file
+from .vcrbench import VCRBench
+from .mmbench_video import MMBenchVideo
+from .mvbench import MVBench, MVBench_MP4
+from .tamperbench import MVTamperBench
+from .videomme import VideoMME
+from .longvideobench import LongVideoBench
+from .mlvu import MLVU
+from .tempcompass import TempCompass
+from .cgbench import (
+    CGBench_MCQ_Grounding_Mini,
+    CGBench_OpenEnded_Mini,
+    CGBench_MCQ_Grounding,
+    CGBench_OpenEnded
+)
+from .megabench import MEGABench
+from .moviechat1k import MovieChat1k
+from .vdc import VDC
+from .worldsense import WorldSense
+from .qbench_video import QBench_Video
+from .video_mmlu import Video_MMLU_CAP, Video_MMLU_QA
+from .video_holmes import Video_Holmes
+from .CGAVCounting.cg_av_counting import CGAVCounting
+from .EgoExoBench.egoexobench import EgoExoBench_MCQ
 
 vcrbench_dataset = {
     'VCRBench_8frame_nopack': partial(VCRBench, dataset='VCR-Bench', nframe=8, pack=False),
