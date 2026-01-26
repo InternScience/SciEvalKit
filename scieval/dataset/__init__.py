@@ -1,109 +1,271 @@
+"""
+Dataset module with lazy loading for optional dependencies.
+
+This module supports numerous dataset implementations, some with specialized
+dependencies. Datasets are only imported when actually used, preventing import
+errors for unavailable dependencies.
+"""
+
 import warnings
+import importlib
+import os.path as osp
+import numpy as np
+import copy as cp
+import pandas as pd
+from typing import Optional
 
+# Always available - base classes and utilities
 from .image_base import img_root_map, ImageBaseDataset
-from .image_caption import ImageCaptionDataset
-from .image_yorn import ImageYORNDataset
-from .image_mcq import (
-    ImageMCQDataset, MMMUDataset, CustomMCQDataset, MUIRDataset, GMAIMMBenchDataset, MMERealWorld, HRBenchDataset,
-    NaturalBenchDataset, WeMath, MMMUProDataset, VMCBenchDataset, MedXpertQA_MM_test, LEGO, VisuLogic, CVBench, TDBench,
-    MicroBench, OmniMedVQA, MSEarthMCQ, VLMBlind, SCAM, _3DSRBench, AffordanceDataset, OmniEarthMCQBench, XLRSBench,
-    TreeBench, CVQA, TopViewRS
-)
-from .image_mt import MMDUDataset
-from .image_vqa import (
-    ImageVQADataset, MathVision, OCRBench, MathVista, LLaVABench, LLaVABench_KO, VGRPBench, MMVet, MTVQADataset,
-    TableVQABench, CustomVQADataset, CRPE, MathVerse, OlympiadBench, SeePhys, QSpatial, VizWiz, MMNIAH, LogicVista,
-    MME_CoT, MMSci_Captioning, Physics_yale, TDBenchGrounding, WildDocBenchmark, OCR_Reasoning, PhyX, CountBenchQA,
-    ZEROBench, Omni3DBench, TallyQA, MMEReasoning, MMVMBench, BMMR, OCRBench_v2, AyaVisionBench, SLAKE_EN_TEST
-)
-
-from .image_ccocr import CCOCRDataset
-from .image_shortqa import ImageShortQADataset, PathVQA_VAL, PathVQA_TEST
-from .text_mcq import CustomTextMCQDataset, TextMCQDataset, ProteinLMBench
-from .browsecomp_zh import BrowseCompZH
-
-from .vcr import VCRDataset
-from .mmlongbench import MMLongBench
-from .dude import DUDE
-from .slidevqa import SlideVQA
-from .vl_rewardbench import VLRewardBench
-from .vlm2bench import VLM2Bench
-from .vlmbias import VLMBias
-from .spatial457 import Spatial457
-from .charxiv import CharXiv
-
-from .mmbench_video import MMBenchVideo
-from .videomme import VideoMME
-from .video_holmes import Video_Holmes
-from .mvbench import MVBench, MVBench_MP4
-from .tamperbench import MVTamperBench
-from .miabench import MIABench
-from .mlvu import MLVU, MLVU_MCQ, MLVU_OpenEnded
-from .tempcompass import TempCompass, TempCompass_Captioning, TempCompass_MCQ, TempCompass_YorN
-from .longvideobench import LongVideoBench
-from .video_concat_dataset import ConcatVideoDataset
-from .mmgenbench import MMGenBench
-from .cgbench import CGBench_MCQ_Grounding_Mini, CGBench_OpenEnded_Mini, CGBench_MCQ_Grounding, CGBench_OpenEnded
-from .CGAVCounting.cg_av_counting import CGAVCounting
-
-from .megabench import MEGABench
-from .moviechat1k import MovieChat1k
-from .video_mmlu import Video_MMLU_CAP, Video_MMLU_QA
-from .vdc import VDC
-from .vcrbench import VCRBench
-from .gobench import GOBenchDataset
-from .sfebench import SFE
-from .earthsebench import EarthSE
-from .visfactor import VisFactor
-from .ost_bench import OSTDataset
-
-from .EgoExoBench.egoexobench import EgoExoBench_MCQ
-
-from .worldsense import WorldSense
-from .qbench_video import QBench_Video, QBench_Video_MCQ, QBench_Video_VQA
-
-from .cmmmu import CMMMU
-from .emma import EMMADataset
-from .wildvision import WildVision
-from .mmmath import MMMath
-from .dynamath import Dynamath
-from .creation import CreationMMBenchDataset
-from .mmalignbench import MMAlignBench
 from .utils import *
-from .video_dataset_config import *
 from ..smp import *
-from .OmniDocBench.omnidocbench import OmniDocBench
-from .moat import MOAT
-from .GUI.screenspot import ScreenSpot
-from .GUI.screenspot_v2 import ScreenSpotV2
-from .GUI.screenspot_pro import ScreenSpot_Pro
-from .mmifeval import MMIFEval
-from .chartmimic import ChartMimic
-from .m4bench import M4Bench
-from .mmhelix import MMHELIX
 
-from .medqbench_mcq import MedqbenchMCQDataset
-from .medqbench_caption import MedqbenchCaptionDataset
-from .medqbench_paired_description import MedqbenchPairedDescriptionDataset
-from .mascqa import MaScQA
-from .SciCode.scicode import SciCode
-from .Researchbench.generate import ResearchbenchGenerate
-from .Researchbench.rank import ResearchbenchRank
-from .Researchbench.retrieve import  ResearchbenchRetrieve
-from .trqa import TRQA
-from .ChemBench.chembench import ChemBench
-from .climaqa import Clima_QA
-from .PHYSICS.PHYSICS import PHYSICS
-from .CMPhysBench.cmphysbench import CMPhysBench
-from .SGI_Bench_1_0.experimental_reasoning import SGI_Bench_Experimental_Reasoning
-from .SGI_Bench_1_0.deep_research import SGI_Bench_Deep_Research
-from .SGI_Bench_1_0.dry_experiment import SGI_Bench_Dry_Experiment
-from .SGI_Bench_1_0.wet_experiment import SGI_Bench_Wet_Experiment
-from .SGI_Bench_1_0.idea_generation import SGI_Bench_Idea_Generation
+# Lazy load supported_video_datasets when needed
+_supported_video_datasets = None
+
+
+def _get_supported_video_datasets():
+    """Lazy load supported_video_datasets from video_dataset_config."""
+    global _supported_video_datasets
+    if _supported_video_datasets is None:
+        from .video_dataset_config import supported_video_datasets
+        _supported_video_datasets = supported_video_datasets
+    return _supported_video_datasets
+
+# Dataset class registry mapping class names to their module paths
+# Organized by module file for easier maintenance
+_DATASET_CLASS_REGISTRY = {
+    
+    'ImageCaptionDataset': '.image_caption',
+    
+    'ImageYORNDataset': '.image_yorn',
+    
+    'ImageMCQDataset': '.image_mcq',
+    'MMMUDataset': '.image_mcq',
+    'CustomMCQDataset': '.image_mcq',
+    'MUIRDataset': '.image_mcq',
+    'GMAIMMBenchDataset': '.image_mcq',
+    'MMERealWorld': '.image_mcq',
+    'HRBenchDataset': '.image_mcq',
+    'NaturalBenchDataset': '.image_mcq',
+    'WeMath': '.image_mcq',
+    'MMMUProDataset': '.image_mcq',
+    'VMCBenchDataset': '.image_mcq',
+    'MedXpertQA_MM_test': '.image_mcq',
+    'LEGO': '.image_mcq',
+    'VisuLogic': '.image_mcq',
+    'CVBench': '.image_mcq',
+    'TDBench': '.image_mcq',
+    'MicroBench': '.image_mcq',
+    'OmniMedVQA': '.image_mcq',
+    'MSEarthMCQ': '.image_mcq',
+    'VLMBlind': '.image_mcq',
+    'SCAM': '.image_mcq',
+    '_3DSRBench': '.image_mcq',
+    'AffordanceDataset': '.image_mcq',
+    'OmniEarthMCQBench': '.image_mcq',
+    'XLRSBench': '.image_mcq',
+    'TreeBench': '.image_mcq',
+    'CVQA': '.image_mcq',
+    'TopViewRS': '.image_mcq',
+
+    'MMDUDataset': '.image_mt',
+
+    'ImageVQADataset': '.image_vqa',
+    'MathVision': '.image_vqa',
+    'OCRBench': '.image_vqa',
+    'MathVista': '.image_vqa',
+    'LLaVABench': '.image_vqa',
+    'LLaVABench_KO': '.image_vqa',
+    'VGRPBench': '.image_vqa',
+    'MMVet': '.image_vqa',
+    'MTVQADataset': '.image_vqa',
+    'TableVQABench': '.image_vqa',
+    'CustomVQADataset': '.image_vqa',
+    'CRPE': '.image_vqa',
+    'MathVerse': '.image_vqa',
+    'OlympiadBench': '.image_vqa',
+    'SeePhys': '.image_vqa',
+    'QSpatial': '.image_vqa',
+    'VizWiz': '.image_vqa',
+    'MMNIAH': '.image_vqa',
+    'LogicVista': '.image_vqa',
+    'MME_CoT': '.image_vqa',
+    'MMSci_Captioning': '.image_vqa',
+    'Physics_yale': '.image_vqa',
+    'TDBenchGrounding': '.image_vqa',
+    'WildDocBenchmark': '.image_vqa',
+    'OCR_Reasoning': '.image_vqa',
+    'PhyX': '.image_vqa',
+    'CountBenchQA': '.image_vqa',
+    'ZEROBench': '.image_vqa',
+    'Omni3DBench': '.image_vqa',
+    'TallyQA': '.image_vqa',
+    'MMEReasoning': '.image_vqa',
+    'MMVMBench': '.image_vqa',
+    'BMMR': '.image_vqa',
+    'OCRBench_v2': '.image_vqa',
+    'AyaVisionBench': '.image_vqa',
+    'SLAKE_EN_TEST': '.image_vqa',
+
+    'CCOCRDataset': '.image_ccocr',
+    
+    'ImageShortQADataset': '.image_shortqa',
+    'PathVQA_VAL': '.image_shortqa',
+    'PathVQA_TEST': '.image_shortqa',
+        
+    'CustomTextMCQDataset': '.text_mcq',
+    'TextMCQDataset': '.text_mcq',
+    'ProteinLMBench': '.text_mcq',
+    
+    'BrowseCompZH': '.browsecomp_zh',
+    
+    'VCRDataset': '.vcr',
+    'MMLongBench': '.mmlongbench',
+    'DUDE': '.dude',
+    'SlideVQA': '.slidevqa',
+    'VLRewardBench': '.vl_rewardbench',
+    'VLM2Bench': '.vlm2bench',
+    'VLMBias': '.vlmbias',
+    'Spatial457': '.spatial457',
+    'CharXiv': '.charxiv',
+
+    'MMBenchVideo': '.mmbench_video',
+    'VideoMME': '.videomme',
+    'Video_Holmes': '.video_holmes',
+
+    'MVBench': '.mvbench',
+    'MVBench_MP4': '.mvbench',
+
+    'MVTamperBench': '.tamperbench',
+    'MIABench': '.miabench',
+
+    'MLVU': '.mlvu',
+    'MLVU_MCQ': '.mlvu',
+    'MLVU_OpenEnded': '.mlvu',
+
+    'TempCompass': '.tempcompass',
+    'TempCompass_Captioning': '.tempcompass',
+    'TempCompass_MCQ': '.tempcompass',
+    'TempCompass_YorN': '.tempcompass',
+
+    'LongVideoBench': '.longvideobench',
+    'MMGenBench': '.mmgenbench',
+
+    'CGBench_MCQ_Grounding_Mini': '.cgbench',
+    'CGBench_OpenEnded_Mini': '.cgbench',
+    'CGBench_MCQ_Grounding': '.cgbench',
+    'CGBench_OpenEnded': '.cgbench',
+
+    'CGAVCounting': '.CGAVCounting.cg_av_counting',
+
+    'MEGABench': '.megabench',
+    'MovieChat1k': '.moviechat1k',
+
+    'Video_MMLU_CAP': '.video_mmlu',
+    'Video_MMLU_QA': '.video_mmlu',
+
+    'VDC': '.vdc',
+    'VCRBench': '.vcrbench',
+    'GOBenchDataset': '.gobench',
+
+    'SFE': '.sfebench',
+    'EarthSE': '.earthsebench',
+    'VisFactor': '.visfactor',
+    'OSTDataset': '.ost_bench',
+
+    'EgoExoBench_MCQ': '.EgoExoBench.egoexobench',
+
+    'WorldSense': '.worldsense',
+    
+    'QBench_Video': '.qbench_video',
+    'QBench_Video_MCQ': '.qbench_video',
+    'QBench_Video_VQA': '.qbench_video',
+
+    'CMMMU': '.cmmmu',
+    'EMMADataset': '.emma',
+    'WildVision': '.wildvision',
+    'MMMath': '.mmmath',
+    'Dynamath': '.dynamath',
+    'CreationMMBenchDataset': '.creation',
+    'MMAlignBench': '.mmalignbench',
+
+    'OmniDocBench': '.OmniDocBench.omnidocbench',
+    
+    'MOAT': '.moat',
+
+    'ScreenSpot': '.GUI.screenspot',
+    'ScreenSpotV2': '.GUI.screenspot_v2',
+    'ScreenSpot_Pro': '.GUI.screenspot_pro',
+
+    'MMIFEval': '.mmifeval',
+    'ChartMimic': '.chartmimic',
+    'M4Bench': '.m4bench',
+    'MMHELIX': '.mmhelix',
+
+    'MedqbenchMCQDataset': '.medqbench_mcq',
+    'MedqbenchCaptionDataset': '.medqbench_caption',
+    'MedqbenchPairedDescriptionDataset': '.medqbench_paired_description',
+    'MaScQA': '.mascqa',
+
+    'SciCode': '.SciCode.scicode',
+
+    'ResearchbenchGenerate': '.Researchbench.generate',
+    'ResearchbenchRank': '.Researchbench.rank',
+    'ResearchbenchRetrieve': '.Researchbench.retrieve',
+
+    'TRQA': '.trqa',
+    'ChemBench': '.ChemBench.chembench',
+    'Clima_QA': '.climaqa',
+    'PHYSICS': '.PHYSICS.PHYSICS',
+    'CMPhysBench': '.CMPhysBench.cmphysbench',
+
+    'SGI_Bench_Experimental_Reasoning': '.SGI_Bench_1_0.experimental_reasoning',
+    'SGI_Bench_Deep_Research': '.SGI_Bench_1_0.deep_research',
+    'SGI_Bench_Dry_Experiment': '.SGI_Bench_1_0.dry_experiment',
+    'SGI_Bench_Wet_Experiment': '.SGI_Bench_1_0.wet_experiment',
+    'SGI_Bench_Idea_Generation': '.SGI_Bench_1_0.idea_generation',
+
+    'AstroVisBench': '.AstroVisBench.AstroVisBench',
+
+    'EarthLinkTest': '.earthlink_test',
+}
+
+
+def __getattr__(name: str):
+    """
+    Lazy loading for dataset classes.
+    
+    This allows importing dataset classes without requiring their dependencies
+    to be installed until the dataset is actually used.
+    """
+    if name in _DATASET_CLASS_REGISTRY:
+        module_path = _DATASET_CLASS_REGISTRY[name]
+        try:
+            module = importlib.import_module(module_path, package=__name__)
+            dataset_class = getattr(module, name)
+            # Cache the imported class in the module's namespace
+            globals()[name] = dataset_class
+            return dataset_class
+        except ImportError as e:
+            warnings.warn(
+                f"Failed to import {name}. "
+                f"This dataset may require additional dependencies. "
+                f"Error: {e}"
+            )
+            raise
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__():
+    """Show available attributes including lazily-loaded datasets."""
+    return list(globals().keys()) + list(_DATASET_CLASS_REGISTRY.keys())
+
 
 class ConcatDataset(ImageBaseDataset):
-    # This dataset takes multiple dataset names as input and aggregate them into a single dataset.
-    # Each single dataset should not have a field named `SUB_DATASET`
+    """
+    This dataset takes multiple dataset names as input and aggregates them into a single dataset.
+    Each single dataset should not have a field named `SUB_DATASET`
+    """
 
     DATASET_SETS = {
         'MMMB': ['MMMB_ar', 'MMMB_cn', 'MMMB_en', 'MMMB_pt', 'MMMB_ru', 'MMMB_tr'],
@@ -117,7 +279,8 @@ class ConcatDataset(ImageBaseDataset):
         ],
         'ScreenSpot': ['ScreenSpot_Mobile', 'ScreenSpot_Desktop', 'ScreenSpot_Web'],
         'ScreenSpot_v2': ['ScreenSpot_v2_Mobile', 'ScreenSpot_v2_Desktop', 'ScreenSpot_v2_Web'],
-        'M4Bench': ['State_Invariance', 'State_Comparison', 'Spatial_Perception', 'Instance_Comparison', 'Detailed_Difference'],  # noqa: E501
+        'M4Bench': ['State_Invariance', 'State_Comparison', 'Spatial_Perception', 
+                    'Instance_Comparison', 'Detailed_Difference'],
     }
 
     def __init__(self, dataset):
@@ -207,89 +370,51 @@ class ConcatDataset(ImageBaseDataset):
             dump(dict_all, score_file)
             return dict_all
 
-class AstroVisBench:
-    """
-    Lazy-loading proxy for AstroVisBench.
-    It masquerades as the real class until instantiation.
-    """
-    @classmethod
-    def supported_datasets(cls):
-        return ['AstroVisBench']
-    TYPE = 'MCQ'
-    MODALITY = 'TEXT'
 
-    def __new__(cls, *args, **kwargs):
+# ConcatVideoDataset needs to be imported normally as it's used
+from .video_concat_dataset import ConcatVideoDataset  # noqa: E402
+
+
+# Build supported datasets list dynamically
+def _get_supported_datasets():
+    """Get all supported dataset names from all dataset classes."""
+    supported = []
+    
+    # Add from concat datasets
+    supported.extend(ConcatDataset.supported_datasets())
+    supported.extend(ConcatVideoDataset.supported_datasets())
+    
+    # Dynamically check each registered class for supported_datasets
+    for class_name in _DATASET_CLASS_REGISTRY:
         try:
-            from .AstroVisBench.AstroVisBench import AstroVisBench as RealAstroVisBench
-            return RealAstroVisBench(*args, **kwargs)
-        except ImportError as e:
-            import warnings
-            warnings.warn(f"Failed to load AstroVisBench. Dependencies missing? Error: {e}")
-            raise e
-
-# Add new supported dataset class here
-IMAGE_DATASET = [
-    ImageCaptionDataset, ImageYORNDataset, ImageMCQDataset, ImageVQADataset,
-    MathVision, MMMUDataset, OCRBench, MathVista, LLaVABench, LLaVABench_KO, VGRPBench, MMVet,
-    MTVQADataset, TableVQABench, MMLongBench, VCRDataset, MMDUDataset, DUDE,
-    SlideVQA, MUIRDataset, CCOCRDataset, GMAIMMBenchDataset, MMERealWorld,
-    HRBenchDataset, CRPE, MathVerse, NaturalBenchDataset, MIABench,
-    OlympiadBench, SeePhys,WildVision, MMMath, QSpatial, Dynamath, MMGenBench, VizWiz,
-    MMNIAH, CMMMU, VLRewardBench, WeMath, LogicVista, MMMUProDataset,
-    CreationMMBenchDataset, ImageShortQADataset, MMAlignBench, OmniDocBench,
-    VLM2Bench, VMCBenchDataset, EMMADataset, MME_CoT, MOAT, MedXpertQA_MM_test,
-    LEGO, MMSci_Captioning, Physics_yale, ScreenSpot_Pro, ScreenSpot,
-    ScreenSpotV2, MMIFEval, Spatial457, VisuLogic, CVBench, PathVQA_VAL,
-    PathVQA_TEST, TDBench, TDBenchGrounding, MicroBench, CharXiv, OmniMedVQA,
-    WildDocBenchmark, MSEarthMCQ, OCR_Reasoning, PhyX, VLMBlind, CountBenchQA,
-    ZEROBench, SCAM, Omni3DBench, TallyQA, _3DSRBench, BMMR, AffordanceDataset,
-    MMEReasoning, GOBenchDataset, SFE, EarthSE, ChartMimic, MMVMBench, XLRSBench,
-    OmniEarthMCQBench, VisFactor, OSTDataset, OCRBench_v2, TreeBench, CVQA, M4Bench,
-    AyaVisionBench, TopViewRS, VLMBias, MMHELIX, MedqbenchMCQDataset,
-    MedqbenchPairedDescriptionDataset, MedqbenchCaptionDataset, SLAKE_EN_TEST, Clima_QA, ChemBench, SGI_Bench_Experimental_Reasoning
-]
-
-VIDEO_DATASET = [
-    MMBenchVideo, VideoMME, MVBench, MVBench_MP4, MVTamperBench,
-    LongVideoBench, WorldSense, VDC, MovieChat1k, MEGABench,
-    MLVU, MLVU_MCQ, MLVU_OpenEnded,
-    TempCompass, TempCompass_MCQ, TempCompass_Captioning, TempCompass_YorN,
-    CGBench_MCQ_Grounding_Mini, CGBench_OpenEnded_Mini, CGBench_MCQ_Grounding, CGBench_OpenEnded,
-    QBench_Video, QBench_Video_MCQ, QBench_Video_VQA,
-    Video_MMLU_CAP, Video_MMLU_QA,
-    Video_Holmes, VCRBench, CGAVCounting,
-    EgoExoBench_MCQ,
-]
-
-TEXT_DATASET = [
-    TextMCQDataset,ResearchbenchGenerate,ResearchbenchRank,ResearchbenchRetrieve, PHYSICS, MaScQA, SciCode, ProteinLMBench, TRQA, AstroVisBench , CMPhysBench,
-    SGI_Bench_Wet_Experiment,SGI_Bench_Dry_Experiment,SGI_Bench_Deep_Research,SGI_Bench_Idea_Generation, BrowseCompZH
-]
-
-CUSTOM_DATASET = [
-    CustomMCQDataset, CustomVQADataset, CustomTextMCQDataset
-]
-
-DATASET_COLLECTION = [ConcatDataset, ConcatVideoDataset]
-
-DATASET_CLASSES = IMAGE_DATASET + VIDEO_DATASET + TEXT_DATASET + CUSTOM_DATASET + DATASET_COLLECTION  # noqa: E501
-SUPPORTED_DATASETS = []
-for DATASET_CLS in DATASET_CLASSES:
-    SUPPORTED_DATASETS.extend(DATASET_CLS.supported_datasets())
+            cls = __getattr__(class_name)
+            if hasattr(cls, 'supported_datasets'):
+                supported.extend(cls.supported_datasets())
+        except Exception:
+            # If class can't be loaded, skip it
+            pass
+    
+    return supported
 
 
 def DATASET_TYPE(dataset, *, default: str = 'MCQ') -> str:
-    for cls in DATASET_CLASSES:
-        if dataset in cls.supported_datasets():
-            if hasattr(cls, 'TYPE'):
-                return cls.TYPE
-    # Have to add specific routine to handle ConcatDataset
+    """Get the type of a dataset (MCQ, VQA, etc.)."""
+    # Check ConcatDataset first
     if dataset in ConcatDataset.DATASET_SETS:
         dataset_list = ConcatDataset.DATASET_SETS[dataset]
         TYPES = [DATASET_TYPE(dname) for dname in dataset_list]
         assert np.all([x == TYPES[0] for x in TYPES]), (dataset_list, TYPES)
         return TYPES[0]
-
+    
+    # Check registered classes
+    for class_name in _DATASET_CLASS_REGISTRY:
+        try:
+            cls = __getattr__(class_name)
+            if hasattr(cls, 'supported_datasets') and dataset in cls.supported_datasets():
+                return getattr(cls, 'TYPE', default)
+        except Exception:
+            continue
+    
     if 'openended' in dataset.lower():
         return 'VQA'
     warnings.warn(f'Dataset {dataset} is a custom one and not annotated as `openended`, will treat as {default}. ')  # noqa: E501
@@ -297,35 +422,78 @@ def DATASET_TYPE(dataset, *, default: str = 'MCQ') -> str:
 
 
 def DATASET_MODALITY(dataset, *, default: str = 'IMAGE') -> str:
+    """Get the modality of a dataset (IMAGE, VIDEO, TEXT)."""
     if dataset is None:
         warnings.warn(f'Dataset is not specified, will treat modality as {default}. ')
         return default
-    for cls in DATASET_CLASSES:
-        if dataset in cls.supported_datasets():
-            if hasattr(cls, 'MODALITY'):
-                return cls.MODALITY
-    # Have to add specific routine to handle ConcatDataset
+    
+    # Check ConcatDataset first
     if dataset in ConcatDataset.DATASET_SETS:
         dataset_list = ConcatDataset.DATASET_SETS[dataset]
         MODALITIES = [DATASET_MODALITY(dname) for dname in dataset_list]
         assert np.all([x == MODALITIES[0] for x in MODALITIES]), (dataset_list, MODALITIES)
         return MODALITIES[0]
-
-    if 'VIDEO' in dataset.lower():
+    
+    # Check registered classes
+    for class_name in _DATASET_CLASS_REGISTRY:
+        try:
+            cls = __getattr__(class_name)
+            if hasattr(cls, 'supported_datasets') and dataset in cls.supported_datasets():
+                return getattr(cls, 'MODALITY', default)
+        except Exception:
+            continue
+    
+    if 'VIDEO' in dataset.upper():
         return 'VIDEO'
-    elif 'IMAGE' in dataset.lower():
+    elif 'IMAGE' in dataset.upper():
         return 'IMAGE'
     warnings.warn(f'Dataset {dataset} is a custom one, will treat modality as {default}. ')
     return default
 
 
 def build_dataset(dataset_name, **kwargs):
-    for cls in DATASET_CLASSES:
-        if dataset_name in supported_video_datasets:
-            return supported_video_datasets[dataset_name](**kwargs)
-        elif dataset_name in cls.supported_datasets():
-            return cls(dataset=dataset_name, **kwargs)
+    """
+    Build a dataset instance by name.
+    
+    Args:
+        dataset_name: Name of the dataset to build
+        **kwargs: Additional arguments to pass to dataset constructor
+    
+    Returns:
+        Dataset instance or None if dataset cannot be built
+    """
 
+    # Check registered classes
+    for class_name in _DATASET_CLASS_REGISTRY:
+        try:
+            cls = __getattr__(class_name)
+            if hasattr(cls, 'supported_datasets') and dataset_name in cls.supported_datasets():
+                return cls(dataset=dataset_name, **kwargs)
+        except ImportError as e:
+            warnings.warn(
+                f"Failed to load dataset class {class_name} for {dataset_name}. "
+                f"Dependencies may be missing: {e}"
+            )
+            continue
+        except Exception as e:
+            warnings.warn(f"Error loading {class_name}: {e}")
+            continue
+    
+    # Check ConcatDataset
+    if dataset_name in ConcatDataset.supported_datasets():
+        return ConcatDataset(dataset=dataset_name, **kwargs)
+    
+    # Check ConcatVideoDataset
+    if hasattr(ConcatVideoDataset, 'supported_datasets'):
+        if dataset_name in ConcatVideoDataset.supported_datasets():
+            return ConcatVideoDataset(dataset=dataset_name, **kwargs)
+    
+    # Check supported_video_datasets from video_dataset_config (lazy loaded)
+    supported_video_datasets = _get_supported_video_datasets()
+    if dataset_name in supported_video_datasets:
+        return supported_video_datasets[dataset_name](**kwargs)
+
+    # Try custom dataset fallback
     warnings.warn(f'Dataset {dataset_name} is not officially supported. ')
     data_file = osp.join(LMUDataRoot(), f'{dataset_name}.tsv')
     if not osp.exists(data_file):
@@ -337,23 +505,68 @@ def build_dataset(dataset_name, **kwargs):
         warnings.warn(f'Data file {data_file} does not have a `question` column. Dataset building failed. ')
         return None
 
+    # Lazy load custom dataset classes
     if 'A' in data and 'B' in data:
         if 'image' in data or 'image_path' in data:
             warnings.warn(f'Will assume unsupported dataset {dataset_name} as a Custom MCQ dataset. ')
+            CustomMCQDataset = __getattr__('CustomMCQDataset')
             return CustomMCQDataset(dataset=dataset_name, **kwargs)
         else:
             warnings.warn(f'Will assume unsupported dataset {dataset_name} as a Custom Text MCQ dataset. ')
+            CustomTextMCQDataset = __getattr__('CustomTextMCQDataset')
             return CustomTextMCQDataset(dataset=dataset_name, **kwargs)
     else:
         warnings.warn(f'Will assume unsupported dataset {dataset_name} as a Custom VQA dataset. ')
+        CustomVQADataset = __getattr__('CustomVQADataset')
         return CustomVQADataset(dataset=dataset_name, **kwargs)
 
 
 def infer_dataset_basename(dataset_name):
+    """Infer the base name of a dataset from its full name."""
     basename = "_".join(dataset_name.split("_")[:-1])
     return basename
 
 
+# Cache for supported datasets (computed on demand)
+_SUPPORTED_DATASETS_CACHE: Optional[list] = None
+
+
+def get_supported_datasets():
+    """Get list of all supported datasets (cached)."""
+    global _SUPPORTED_DATASETS_CACHE
+    if _SUPPORTED_DATASETS_CACHE is None:
+        _SUPPORTED_DATASETS_CACHE = _get_supported_datasets()
+    return _SUPPORTED_DATASETS_CACHE
+
+
+# For backwards compatibility, provide SUPPORTED_DATASETS as a property
+class _SupportedDatasets:
+    def __iter__(self):
+        return iter(get_supported_datasets())
+    
+    def __contains__(self, item):
+        return item in get_supported_datasets()
+    
+    def __len__(self):
+        return len(get_supported_datasets())
+
+
+SUPPORTED_DATASETS = _SupportedDatasets()
+
+
 __all__ = [
-    'build_dataset', 'img_root_map', 'build_judge', 'extract_answer_from_item', 'prefetch_answer', 'DEBUG_MESSAGE'
-] + [cls.__name__ for cls in DATASET_CLASSES]
+    'build_dataset',
+    'img_root_map',
+    'build_judge',
+    'extract_answer_from_item',
+    'prefetch_answer',
+    'DEBUG_MESSAGE',
+    'DATASET_TYPE',
+    'DATASET_MODALITY',
+    'infer_dataset_basename',
+    'get_supported_datasets',
+    'SUPPORTED_DATASETS',
+    'ConcatDataset',
+    'ConcatVideoDataset',
+    'ImageBaseDataset',
+]

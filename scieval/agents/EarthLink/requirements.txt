@@ -1,0 +1,9 @@
+cachetools==6.2.2
+httpx==0.28.1
+langchain==1.0.3
+langchain-openai==1.0.2
+pydantic==2.12.3
+tavily-python==0.7.19
+tiktoken==0.11.0
+tqdm
+transformers

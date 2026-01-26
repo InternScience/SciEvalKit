@@ -7,8 +7,8 @@ from typing import Any, Dict, List, Tuple
 
 from tqdm import tqdm
 
+from scieval.agents import create_agent, get_available_agents
 from scieval.agents.records import EvalRecord, TrajectoryStore
-from scieval.agents.smolagents import SmolAgentsAgent
 from scieval.dataset import build_dataset
 from scieval.smp import dump, get_logger, load, timestr, githash, ls
 
@@ -32,11 +32,38 @@ def _build_dataset_from_config(cfg: Dict[str, Any], dataset_name: str):
 
 
 def _build_agent_from_config(cfg: Dict[str, Any], agent_name: str):
+    """
+    Build an agent from configuration.
+    
+    Args:
+        cfg: Configuration dictionary
+        agent_name: Name of the agent in the config
+    
+    Returns:
+        Agent instance
+    
+    Raises:
+        ValueError: If agent class is not supported
+        ImportError: If agent dependencies are not installed
+    """
     config = copy.deepcopy(cfg[agent_name])
     cls_name = config.pop("class", "SmolAgentsAgent")
-    if cls_name not in ["SmolAgentsAgent", "smolagents"]:
-        raise ValueError(f"Unsupported agent class: {cls_name}")
-    return SmolAgentsAgent(**config)
+    
+    # Handle legacy name mapping
+    if cls_name == "smolagents":
+        cls_name = "SmolAgentsAgent"
+    
+    try:
+        return create_agent(cls_name, **config)
+    except ImportError as e:
+        available = get_available_agents()
+        available_list = [name for name, avail in available.items() if avail]
+        raise ImportError(
+            f"Failed to create agent '{cls_name}'. "
+            f"Required dependencies may not be installed.\n"
+            f"Available agents: {', '.join(available_list) if available_list else 'None'}\n"
+            f"Error: {e}"
+        ) from e
 
 
 def _run_one_sample(
