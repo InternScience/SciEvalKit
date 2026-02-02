@@ -104,7 +104,7 @@ class SmolAgentsAgent(AgentBase):
     ):
         super().__init__(name=self.name, model_version=model_version)
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
-        self.api_base = api_base or os.environ.get("OPENAI_BASE_URL", "")
+        self.api_base = api_base or os.environ.get("OPENAI_API_BASE", "")
         self.model_version = model_version or os.environ.get("MODEL_ID", "o3")
 
     def run(self, sample: EvalSample) -> EvalResult:
