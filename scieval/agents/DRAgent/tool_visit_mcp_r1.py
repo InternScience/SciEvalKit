@@ -18,12 +18,6 @@ VISIT_SERVER_TIMEOUT = int(os.getenv("VISIT_SERVER_TIMEOUT", 200))
 WEBCONTENT_MAXLENGTH = int(os.getenv("WEBCONTENT_MAXLENGTH", 150000))
 
 JINA_API_KEYS = os.getenv("JINA_API_KEYS", "")
-# JINA_API_KEYS = os.getenv("JINA_API_KEYS", "jina_1d5b2872cf644827a3448715e38768a5dBBoEY44QzFjEkp2xzqqmtizAqNd")
-# os.environ["JINA_API_KEYS"] = JINA_API_KEYS
-# os.environ["API_KEY"] = "sk-6iA5h4eYogED6550x1LUFh62WNZtRBAMuX96mBymNiY1qVH8"
-# os.environ["API_BASE"] = "http://35.220.164.252:3888/v1/"
-# os.environ["SUMMARY_MODEL_NAME"] = "Qwen/Qwen3-235B-A22B-Instruct-2507"
-
 
 successful_calls_visit = 0
 failed_calls_visit = 0
