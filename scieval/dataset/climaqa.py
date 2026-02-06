@@ -10,6 +10,32 @@ from .utils.clima_qa.llm_em_matcher import em_with_llm
 from .utils.judge_util import build_judge
 
 
+def get_valid_fascore_params(judge_kwargs):
+    """Extract parameters accepted by FAScore constructor from judge_kwargs"""
+    import inspect
+    
+    # Get FAScore constructor parameters
+    sig = inspect.signature(FAScore.__init__)
+    fascore_params = list(sig.parameters.keys())[1:]  # Skip 'self'
+    
+    # Extract valid parameters
+    valid_params = {}
+    for param_name in fascore_params:
+        if param_name in judge_kwargs:
+            valid_params[param_name] = judge_kwargs[param_name]
+        else:
+            # Use custom default for 'model' if not provided
+            if param_name == 'model':
+                valid_params[param_name] = 'gpt-4o-2024-11-20'
+                continue
+                
+            # For other missing parameters, use the default from FAScore
+            param = sig.parameters[param_name]
+            if param.default != inspect.Parameter.empty:
+                valid_params[param_name] = param.default
+    
+    return valid_params
+
 class Clima_QA(TextBaseDataset):\
 
     judge = None
@@ -92,7 +118,7 @@ class Clima_QA(TextBaseDataset):\
         use_fa = True if judge_kwargs.get("use_fa", False) else False
 
         df = load(eval_file)
-
+        # df = pd.DataFrame(df)
         required_cols = ["index", "task", "question", "answer", "prediction", "Complexity", "Validation"]
         for c in required_cols:
             if c not in df.columns:
@@ -108,7 +134,11 @@ class Clima_QA(TextBaseDataset):\
 
         bleu = BLEUScore()
         bert = BERTScore(lang="en")
-        fa = FAScore(**judge_kwargs) if use_fa else None
+        if use_fa:
+            valid_kwargs = get_valid_fascore_params(judge_kwargs)
+            fa = FAScore(**valid_kwargs)
+        else:
+            fa = None
         ps = PhraseSimilarity()
 
         per_sample: List[Dict[str, Any]] = []
