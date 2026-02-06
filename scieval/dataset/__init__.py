@@ -38,6 +38,7 @@ from .charxiv import CharXiv
 from .mmbench_video import MMBenchVideo
 from .videomme import VideoMME
 from .video_holmes import Video_Holmes
+VideoHolmesDataset = Video_Holmes
 from .mvbench import MVBench, MVBench_MP4
 from .tamperbench import MVTamperBench
 from .miabench import MIABench
@@ -90,6 +91,7 @@ from .medqbench_caption import MedqbenchCaptionDataset
 from .medqbench_paired_description import MedqbenchPairedDescriptionDataset
 from .mascqa import MaScQA
 from .SciCode.scicode import SciCode
+from .livecodebench import LiveCodeBench
 from .Researchbench.generate import ResearchbenchGenerate
 from .Researchbench.rank import ResearchbenchRank
 from .Researchbench.retrieve import  ResearchbenchRetrieve
@@ -266,8 +268,8 @@ VIDEO_DATASET = [
 
 TEXT_DATASET = [
     TextMCQDataset,ResearchbenchGenerate,ResearchbenchRank,ResearchbenchRetrieve, PHYSICS, MaScQA, SciCode, ProteinLMBench, TRQA, AstroVisBench , CMPhysBench,
-    SGI_Bench_Wet_Experiment,SGI_Bench_Dry_Experiment,SGI_Bench_Deep_Research,SGI_Bench_Idea_Generation, FrontierScience_Olympiad, FrontierScience_Research, 
-    BrowseCompZH
+    SGI_Bench_Wet_Experiment,SGI_Bench_Dry_Experiment,SGI_Bench_Deep_Research,SGI_Bench_Idea_Generation, FrontierScience_Olympiad, FrontierScience_Research,
+    LiveCodeBench, BrowseCompZH
 ]
 
 CUSTOM_DATASET = [
@@ -357,7 +359,8 @@ def infer_dataset_basename(dataset_name):
     basename = "_".join(dataset_name.split("_")[:-1])
     return basename
 
-
 __all__ = [
     'build_dataset', 'img_root_map', 'build_judge', 'extract_answer_from_item', 'prefetch_answer', 'DEBUG_MESSAGE'
-] + [cls.__name__ for cls in DATASET_CLASSES]
+] + [cls.__name__ for cls in DATASET_CLASSES] + [
+    "VideoHolmesDataset"
+]
