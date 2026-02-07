@@ -20,7 +20,7 @@ class LiveCodeBench(TextBaseDataset):
     MODALITY = "TEXT"
     dataset_name = "LiveCodeBench"
 
-    def __init__(self, dataset="LiveCodeBench", split="test", version="release_v2", **kwargs):
+    def __init__(self, dataset="LiveCodeBench", split="test", version="release_v6", **kwargs):
         self.split = split
         self.version = version
         super().__init__(dataset=dataset, **kwargs)
@@ -39,14 +39,15 @@ class LiveCodeBench(TextBaseDataset):
             "release_v3": ["test.jsonl", "test2.jsonl", "test3.jsonl"],
             "release_v4": ["test.jsonl", "test2.jsonl", "test3.jsonl", "test4.jsonl"],
             "release_v5": ["test.jsonl", "test2.jsonl", "test3.jsonl", "test4.jsonl", "test5.jsonl"],
-            "release_latest": ["test.jsonl", "test2.jsonl", "test3.jsonl", "test4.jsonl", "test5.jsonl"],
+            "release_v6": ["test.jsonl", "test2.jsonl", "test3.jsonl", "test4.jsonl", "test5.jsonl", "test6.jsonl"],
+            "release_latest": ["test.jsonl", "test2.jsonl", "test3.jsonl", "test4.jsonl", "test5.jsonl", "test6.jsonl"],
         }
         
         target_files = files_map.get(self.version)
         if not target_files:
              # Default fallback
-             print(f"Warning: Unknown version {self.version}, defaulting to release_v2")
-             target_files = files_map["release_v2"]
+             print(f"Warning: Unknown version {self.version}, defaulting to release_v6")
+             target_files = files_map["release_v6"]
 
         dfs = []
         for file_name in target_files:
@@ -63,6 +64,7 @@ class LiveCodeBench(TextBaseDataset):
              raise RuntimeError("Failed to load any data files.")
              
         df = pd.concat(dfs, ignore_index=True)
+        
         
         # Standardize columns for SciEvalKit
         df['index'] = df.index
@@ -90,8 +92,18 @@ class LiveCodeBench(TextBaseDataset):
             
         return df
 
-    # build_prompt removed to use TextBaseDataset implementation
+    def build_prompt(self, line):
+        if isinstance(line, int):
+            line = self.data.iloc[line]
 
+        question = line['question']
+        
+        # Deepseek-style prompt for Qwen3-30B-A3B-Thinking-2507 and others
+        prompt = f"### Instruction: You will be given a question (problem specification) and will generate a correct Python program that matches the specification and passes all tests.\n\n{question}"
+
+        msgs = []
+        msgs.append(dict(type='text', value=prompt))
+        return msgs
 
     def extract_code(self, text):
         text = str(text)
@@ -177,8 +189,21 @@ class LiveCodeBench(TextBaseDataset):
         try:
             # Dynamically find where lcb_runner is installed
             import lcb_runner
-            # Get the parent directory of the installed package (e.g., site-packages)
-            lcb_path = os.path.dirname(os.path.dirname(lcb_runner.__file__))
+            
+            # Determine path safely, handling valid packages and namespace packages
+            if hasattr(lcb_runner, '__file__') and lcb_runner.__file__:
+                # Standard package: .../site-packages/lcb_runner/__init__.py -> .../site-packages
+                lcb_path = os.path.dirname(os.path.dirname(lcb_runner.__file__))
+            elif hasattr(lcb_runner, '__path__'):
+                # Namespace package or executable zip: .../lcb_runner
+                paths = list(lcb_runner.__path__)
+                if paths:
+                    lcb_path = os.path.dirname(paths[0])
+                else:
+                    lcb_path = os.getcwd()
+            else:
+                lcb_path = os.getcwd()
+
             logger.info(f"Running LiveCodeBench Evaluator from detected install path: {lcb_path}")
             
             # Run with cwd set to the package installation directory so it can find 'lcb_runner/prompts/...'
@@ -203,6 +228,14 @@ class LiveCodeBench(TextBaseDataset):
             else:
                  logger.warning(f"Evaluation result file not found at {eval_path}")
 
+            # Save metrics to score file (CSV)
+            if metrics:
+                score_file = eval_file.rsplit('.', 1)[0] + '_score.csv'
+                acc = metrics.get("pass@1", 0) * 100
+                score_df = pd.DataFrame([{"accuracy": acc, "split": "test", "version": self.version}])
+                score_df.to_csv(score_file, index=False)
+                logger.info(f"Saved evaluation score to {score_file}")
+            
             # Record full log
             return {
                 "accuracy": metrics.get("pass@1", 0) * 100, # Convert to percentage if needed, or keep as is. Usually LCB is 0-1.
