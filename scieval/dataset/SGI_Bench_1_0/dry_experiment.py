@@ -22,6 +22,12 @@ tmp_data_dir = "./outputs/sgi_tmp_data"
 env = os.environ.copy()
 env["PYTHONIOENCODING"] = "utf-8"
 
+
+import os
+import subprocess
+import platform
+
+
 def run_script_in_folder(folder_path):
     """
     Run data.py (if exists) and main.py in the given folder,
@@ -37,7 +43,8 @@ def run_script_in_folder(folder_path):
             timeout=10 * 60,  # 10-minute timeout
             encoding="utf-8",
             cwd=str(folder_path),
-            env=env
+            env=env,
+            shell=platform.system() == "Windows"
         )
         if result.returncode == 0:
             # print(f"✅")
@@ -67,13 +74,14 @@ def run_script(ques_dict):
             # Run the script and capture output
             start_time = time.time()
             result = subprocess.run(
-            ["conda", "run", "-n", "dryexp", "python", 'main_model.py'],
+                ["conda", "run", "-n", "dryexp", "python", 'main_model.py'],
                 capture_output=True,
                 text=True,
                 timeout=300,  # 5 minutes timeout
                 encoding="utf-8",
                 cwd=str(folder_path),
-                env=env
+                env=env,
+                shell=platform.system() == "Windows"
             )
             end_time = time.time()
             elapsed = end_time - start_time
@@ -163,7 +171,10 @@ example = {{
             llm_judge = None
 
         unit_test_dict['llm_judge'] = llm_judge
-        unit_test_dict['pass'] = 1 if unit_test_dict['llm_judge']['judgment'] == 'correct' else 0
+        if llm_judge and isinstance(llm_judge, dict):
+            unit_test_dict['pass'] = 1 if llm_judge.get('judgment') == 'correct' else 0
+        else:
+            unit_test_dict['pass'] = 0
         ques_dict['unit_test'][unit_test_idx] = unit_test_dict
 
     ques_dict['pass_nums'] = sum([unit_test_dict['pass'] for unit_test_dict in ques_dict['unit_test']])
@@ -435,10 +446,10 @@ def minus(a, b):
 
         ################################################################## 代码保存 ##################################################################
         for index, item in data.iterrows():
-            main_code = item['main_code']
+            main_code = item['incomplete_main_code']
             incomplete_functions = item['incomplete_functions']
             answer = extract_final_answer(item['prediction'])
-            for incomplete_function in incomplete_functions:
+            for incomplete_function in eval(incomplete_functions):
                 try:
                     main_code = replace_function(main_code, answer, incomplete_function)
                 except:
