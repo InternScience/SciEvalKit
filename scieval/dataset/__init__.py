@@ -20,6 +20,7 @@ from .image_vqa import (
 from .image_ccocr import CCOCRDataset
 from .image_shortqa import ImageShortQADataset, PathVQA_VAL, PathVQA_TEST
 from .text_mcq import CustomTextMCQDataset, TextMCQDataset, ProteinLMBench
+from .Protein_GO import ProteinGODataset
 from .browsecomp_zh import BrowseCompZH
 
 from .frontierscience import FrontierScience_Olympiad, FrontierScience_Research
@@ -267,7 +268,7 @@ VIDEO_DATASET = [
 ]
 
 TEXT_DATASET = [
-    TextMCQDataset,ResearchbenchGenerate,ResearchbenchRank,ResearchbenchRetrieve, PHYSICS, MaScQA, SciCode, ProteinLMBench, TRQA, AstroVisBench , CMPhysBench,
+    TextMCQDataset,ResearchbenchGenerate,ResearchbenchRank,ResearchbenchRetrieve, PHYSICS, MaScQA, SciCode, ProteinLMBench, ProteinGODataset, TRQA, AstroVisBench , CMPhysBench,
     SGI_Bench_Wet_Experiment,SGI_Bench_Dry_Experiment,SGI_Bench_Deep_Research,SGI_Bench_Idea_Generation, FrontierScience_Olympiad, FrontierScience_Research,
     LiveCodeBench, BrowseCompZH
 ]
