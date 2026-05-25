@@ -81,11 +81,16 @@ class OpenAIWrapper(BaseAPI):
             if key is None:
                 key = env_key
         elif 'gemini' in model and 'preview' in model:
-            # Will only handle preview models
-            env_key = os.environ.get('GOOGLE_API_KEY', '')
-            if key is None:
-                key = env_key
-            api_base = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+            # For gemini *preview* model variants, default to Google's official
+            # OpenAI-compatible endpoint -- but ONLY if the caller did not
+            # explicitly provide an api_base. Respecting user-provided api_base
+            # lets aggregator proxies (e.g. boyue) route gemini-preview models
+            # without being silently hijacked to Google.
+            if api_base is None or api_base == 'OFFICIAL':
+                env_key = os.environ.get('GOOGLE_API_KEY', '')
+                if key is None:
+                    key = env_key
+                api_base = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
         elif 'ernie' in model:
             env_key = os.environ.get('BAIDU_API_KEY', '')
             if key is None:

@@ -272,13 +272,11 @@ Rules:
     return {"hit": 0, "log": "judge_fail"}
 
 
-def _auxeval_research(tup):
-    grader, item = tup
+def _auxeval_research(grader, item):
     return _judge_score_0_10(grader, item["question"], item["answer"], item["prediction"])
 
 
-def _auxeval_olympiad_judge(tup):
-    grader, item = tup
+def _auxeval_olympiad_judge(grader, item):
     return _judge_binary_correct(grader, item["question"], item["answer"], item["prediction"])
 
 

@@ -2,6 +2,7 @@ import argparse
 import json
 import shutil
 import subprocess
+import sys
 import time
 from pathlib import Path
 from datasets import load_dataset
@@ -135,7 +136,7 @@ process_hdf5_to_tuple = _parse_mod.process_hdf5_to_tuple  # noqa: F401, E402
     def run_script(script_path: Path) -> tuple[int, str, str]:
         try:
             res = subprocess.run(
-                ["python", str(script_path)],
+                [sys.executable, str(script_path)],
                 check=False,
                 capture_output=True,
                 text=True,

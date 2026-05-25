@@ -1,5 +1,6 @@
 import json
 import pickle
+import re
 import warnings
 import pandas as pd
 import os
@@ -11,6 +12,8 @@ import numpy as np
 import validators
 import mimetypes
 import multiprocessing as mp
+
+_LONE_SURROGATE_RE = re.compile(r'[\ud800-\udfff]')
 from .misc import toliststr
 from .vlm import decode_base64_to_image_file
 
@@ -143,12 +146,17 @@ def dump(data, f, **kwargs):
         if isinstance(data, pd.DataFrame):
             # 转换为 records 格式（列表格式）
             data = data.to_dict('records')
-        json.dump(data, open(pth, 'w'), indent=4, ensure_ascii=False, cls=NumpyEncoder)
+        text = json.dumps(data, indent=4, ensure_ascii=False, cls=NumpyEncoder)
+        text = _LONE_SURROGATE_RE.sub('�', text)
+        with open(pth, 'w', encoding='utf-8') as f:
+            f.write(text)
 
     def dump_jsonl(data, f, **kwargs):
         lines = [json.dumps(x, ensure_ascii=False, cls=NumpyEncoder) for x in data]
-        with open(f, 'w', encoding='utf8') as fout:
-            fout.write('\n'.join(lines))
+        text = '\n'.join(lines)
+        text = _LONE_SURROGATE_RE.sub('�', text)
+        with open(f, 'w', encoding='utf-8') as fout:
+            fout.write(text)
 
     def dump_xlsx(data, f, **kwargs):
         data.to_excel(f, index=False, engine='xlsxwriter')
@@ -509,6 +517,16 @@ def prepare_reuse_files(pred_root_meta, eval_id, model_name, dataset_name, reuse
         if prev_file is not None:
             warnings.warn(f'--reuse is set, will reuse prediction file {prev_file}')
             os.system(f'cp {prev_file} {work_dir}')
+        else:
+            # No finished prediction file (xlsx) found — look for in-progress
+            # supp.pkl so that interrupted inference can resume across eval_ids.
+            for root in prev_pred_roots[::-1]:
+                supp = ls(root, match=f'{model_name}_{dataset_name}_supp')
+                if len(supp):
+                    for f in supp:
+                        warnings.warn(f'--reuse is set, will reuse in-progress file {f}')
+                        os.system(f'cp {f} {work_dir}')
+                    break
 
     if not reuse_aux:
         warnings.warn(f'--reuse-aux is not set, all auxiliary files in {work_dir} are removed. ')

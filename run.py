@@ -3,6 +3,13 @@ import os
 import subprocess
 from functools import partial
 
+import faulthandler
+import signal
+import sys
+faulthandler.enable()
+if hasattr(signal, "SIGUSR1"):
+    faulthandler.register(signal.SIGUSR1, file=sys.stderr, all_threads=True, chain=False)
+
 
 # GET the number of GPUs on the node without importing libs like torch
 def get_gpu_list():

@@ -31,7 +31,7 @@ class SciCode(TextBaseDataset):
     dataset_name = "SciCode"
 
     def __init__(
-        self, split: str = "test", with_background: bool = True, **kwargs
+        self, split: str = "test", with_background: bool = True, dataset: str = "SciCode", **kwargs
     ) -> None:
         # Save flags first; TextBaseDataset.__init__ will call self.load_data()
         self.split = split
@@ -172,10 +172,21 @@ class SciCode(TextBaseDataset):
             raise KeyError(
                 "The evaluation file must contain an 'id' or 'question_id' column."
             )
-        preds: Dict[str, str] = {
-            str(k): str(v)
-            for k, v in zip(pred_df[id_col].tolist(), pred_df["prediction"].tolist())
-        }
+        # Build preds dict, rebuilding the unique step ID from problem_id + step
+        # columns when available. The xlsx writer coerces decimal-looking strings
+        # like "11.10" into floats (11.1), which collides with the genuine "11.1"
+        # row and silently drops step-10 predictions for problems with >=10 steps.
+        # See https://github.com/InternScience/SciEvalKit issue (SciCode 11.10/12.10/etc).
+        has_pid = "problem_id" in pred_df.columns
+        has_step = "step" in pred_df.columns
+        preds: Dict[str, str] = {}
+        for _, row in pred_df.iterrows():
+            uid: str
+            if has_pid and has_step and pd.notna(row["problem_id"]) and pd.notna(row["step"]):
+                uid = f"{int(row['problem_id'])}.{int(row['step'])}"
+            else:
+                uid = str(row[id_col])
+            preds[uid] = str(row["prediction"])
 
         # 2) Prepare paths (generated_code & logs INSIDE model folder)
         model_stub = str(
