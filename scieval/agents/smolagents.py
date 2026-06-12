@@ -4,15 +4,15 @@ import os
 from typing import Any, Dict, List, Optional, Union
 
 from PIL import Image
-from smolagents import (
-    ActionStep,
-    ChatMessage,
-    OpenAIServerModel,
-    PlanningStep,
-    TaskStep,
-    ToolCallingAgent,
-)
-from smolagents import PythonInterpreterTool, VisitWebpageTool, WikipediaSearchTool
+# from smolagents import (
+#     ActionStep,
+#     ChatMessage,
+#     OpenAIServerModel,
+#     PlanningStep,
+#     TaskStep,
+#     ToolCallingAgent,
+# )
+# from smolagents import PythonInterpreterTool, VisitWebpageTool, WikipediaSearchTool
 
 from .base import AgentBase, EvalSample
 from .records import EvalResult, StepResult, ToolCalling

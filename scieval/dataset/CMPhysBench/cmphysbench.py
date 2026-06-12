@@ -97,6 +97,10 @@ class CMPhysBench(TextBaseDataset):
     def evaluate(self, eval_file, **kwargs):
 
         results = load(eval_file)
+        # When PRED_FORMAT=json, load() returns a list of records rather than a
+        # DataFrame (xlsx/csv/tsv); the logic below relies on DataFrame semantics.
+        if not isinstance(results, pd.DataFrame):
+            results = pd.DataFrame(results)
         assert all(col in results for col in ['answer', 'prediction', 'answer_type', 'topic']), \
             "Evaluation file must contain 'answer', 'prediction', 'answer_type', and 'topic' columns."
         

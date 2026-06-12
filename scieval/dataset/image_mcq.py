@@ -267,7 +267,9 @@ class ImageMCQDataset(ImageBaseDataset):
             model = None
         else:
             try:
-                model = build_judge_model(model=model, **judge_kwargs)
+                build_kwargs = dict(judge_kwargs)
+                build_kwargs.pop('model', None)
+                model = build_judge_model(model=model, **build_kwargs)
                 if not model.working():
                     warnings.warn(
                         f'Judge model {model} is not working properly (working() returned False), will use exact matching for evaluation.')
@@ -281,6 +283,8 @@ class ImageMCQDataset(ImageBaseDataset):
         result_file = get_intermediate_file_path(eval_file, f'_{name_str}_result', 'pkl')
 
         data = load(eval_file)
+        if not isinstance(data, pd.DataFrame):
+            data = pd.DataFrame(data)
         data = data.sort_values(by='index')
         data['prediction'] = [str(x) for x in data['prediction']]
         # If not choice label, then use lower case
@@ -304,6 +308,8 @@ class ImageMCQDataset(ImageBaseDataset):
         eval_record = get_intermediate_file_path(eval_file, f'_{name_str}_result')
         dump(data, eval_record)
         data = load(eval_record)
+        if not isinstance(data, pd.DataFrame):
+            data = pd.DataFrame(data)
 
         # May have different report acc functions for different datasets
         if 'MMT' in dataset:

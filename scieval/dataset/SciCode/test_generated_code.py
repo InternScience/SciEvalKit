@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -134,9 +135,10 @@ process_hdf5_to_tuple = _parse_mod.process_hdf5_to_tuple  # noqa: F401, E402
                         f.write(line + "\n")
 
     def run_script(script_path: Path) -> tuple[int, str, str]:
+        python_executable = os.environ.get("SCIEVAL_KIT_PYTHON") or sys.executable
         try:
             res = subprocess.run(
-                [sys.executable, str(script_path)],
+                [python_executable, str(script_path)],
                 check=False,
                 capture_output=True,
                 text=True,

@@ -448,6 +448,8 @@ def minus(a, b):
         for index, item in data.iterrows():
             main_code = item['incomplete_main_code']
             incomplete_functions = item['incomplete_functions']
+            if isinstance(incomplete_functions, str):
+                incomplete_functions = ast.literal_eval(incomplete_functions)
             answer = extract_final_answer(item['prediction'])
             for incomplete_function in eval(incomplete_functions):
                 try:

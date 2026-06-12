@@ -1,5 +1,6 @@
 from typing import Any, Dict, List
 import json
+import re
 import copy as _copy
 from datasets import load_dataset
 import pandas as pd
@@ -11,6 +12,18 @@ from json_repair import repair_json
 
 
 PARSER_MODEL_DEFAULT = 'gpt-4.1-mini'
+
+_SURROGATE_RX = re.compile(r'[\ud800-\udfff]')
+
+
+def _strip_surrogates(obj):
+    if isinstance(obj, str):
+        return _SURROGATE_RX.sub('�', obj)
+    if isinstance(obj, dict):
+        return {k: _strip_surrogates(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_strip_surrogates(v) for v in obj]
+    return obj
 
 
 def extract_final_answer(answer_with_thinking: str, start_tag='<answer>', end_tag='</answer>'):
@@ -264,6 +277,6 @@ Step 2. ...
 
         score_file = get_intermediate_file_path(eval_file, '_score', 'json')
         result_file = get_intermediate_file_path(eval_file, '_result', 'json')
-        dump(out_list, score_file)
-        dump(result, result_file)
+        dump(_strip_surrogates(out_list), score_file)
+        dump(_strip_surrogates(result), result_file)
         return result

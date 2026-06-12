@@ -2,6 +2,7 @@ import json
 import tempfile
 import sys
 import subprocess
+import os
 import pandas as pd
 import re
 from datasets import load_dataset
@@ -20,9 +21,17 @@ class LiveCodeBench(TextBaseDataset):
     MODALITY = "TEXT"
     dataset_name = "LiveCodeBench"
 
-    def __init__(self, dataset="LiveCodeBench", split="test", version="release_v6", **kwargs):
+    def __init__(
+        self,
+        dataset="LiveCodeBench",
+        split="test",
+        version="v6",
+        prompt_style="codeqwen",
+        **kwargs,
+    ):
         self.split = split
         self.version = version
+        self.prompt_style = str(prompt_style).lower()
         super().__init__(dataset=dataset, **kwargs)
 
     @classmethod
@@ -41,6 +50,7 @@ class LiveCodeBench(TextBaseDataset):
             "release_v5": ["test.jsonl", "test2.jsonl", "test3.jsonl", "test4.jsonl", "test5.jsonl"],
             "release_v6": ["test.jsonl", "test2.jsonl", "test3.jsonl", "test4.jsonl", "test5.jsonl", "test6.jsonl"],
             "release_latest": ["test.jsonl", "test2.jsonl", "test3.jsonl", "test4.jsonl", "test5.jsonl", "test6.jsonl"],
+            "v6": ["test6.jsonl"]
         }
         
         target_files = files_map.get(self.version)
@@ -96,23 +106,62 @@ class LiveCodeBench(TextBaseDataset):
         if isinstance(line, int):
             line = self.data.iloc[line]
 
-        question = line['question']
-        
-        # Deepseek-style prompt for Qwen3-30B-A3B-Thinking-2507 and others
-        prompt = f"### Instruction: You will be given a question (problem specification) and will generate a correct Python program that matches the specification and passes all tests.\n\n{question}"
+        question = line["question"]
+        starter_code = line.get("starter_code", "")
 
-        msgs = []
-        msgs.append(dict(type='text', value=prompt))
-        return msgs
+        formatting_with_starter = (
+            "You will use the following starter code to write the solution to the problem "
+            "and enclose your code within delimiters."
+        )
+        formatting_without_starter = (
+            "Read the inputs from stdin solve the problem and write the answer to stdout "
+            "(do not directly test on the sample inputs). Enclose your code within delimiters as follows. "
+            "Ensure that when the python program runs, it reads the inputs, runs the algorithm and writes output to STDOUT."
+        )
+
+        user_body = (
+            "You will be given a question (problem specification) and will generate a correct Python program "
+            "that matches the specification and passes all tests. \n\n"
+            f"Question: {question}\n\n"
+        )
+
+        if starter_code:
+            user_body += f"{formatting_with_starter}\n"
+            user_body += f"```python\n{starter_code}\n```\n\n"
+        else:
+            user_body += f"{formatting_without_starter}\n"
+            user_body += "```python\n# YOUR CODE HERE\n```\n\n"
+
+        if self.prompt_style == "codeqwen":
+            # Align with LiveCodeBench: LMStyle.CodeQwenInstruct
+            prompt = (
+                "<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n"
+                "<|im_start|>user\n\n"
+                f"{user_body}<|im_end|>\n"
+                "<|im_start|>assistant\n"
+            )
+        elif self.prompt_style == "qwq":
+            prompt = (
+                "<|im_start|>system\nYou are a helpful and harmless assistant. "
+                "You are Qwen developed by Alibaba. You should think step-by-step.<|im_end|>\n"
+                "<|im_start|>user\n\n"
+                f"{user_body}<|im_end|>\n"
+                "<|im_start|>assistant\n"
+            )
+        else:
+            prompt = user_body
+
+        return [dict(type="text", value=prompt)]
 
     def extract_code(self, text):
-        text = str(text)
+        text = '' if text is None else str(text)
         if "```" in text:
-            blocks = re.findall(r'```(?:[\w\+\.]*)\n(.*?)```', text, re.DOTALL)
+            blocks = re.findall(r'```(?:[\w\+\.]*)\s*\n?(.*?)```', text, re.DOTALL)
             if blocks:
-                # Use the last block as LiveCodeBench often suggests
+                # Use the last block as LiveCodeBench often suggests.
                 return blocks[-1].strip()
-        return text.strip()
+        # Required behavior: if no fenced code block, code_list should be empty.
+        return ''
 
     def evaluate(self, eval_file, **judge_kwargs):
         # Check dependency
@@ -144,6 +193,8 @@ class LiveCodeBench(TextBaseDataset):
             return {}
             
         records = []
+        raw_output_by_qid = {}
+        code_by_qid = {}
         for _, row in df.iterrows():
             # Ensure question_id matches what LCB expects
             # We stored 'id' in load_data, checking if it is preserved in output
@@ -156,7 +207,13 @@ class LiveCodeBench(TextBaseDataset):
                 q_id = str(row.get('id', ''))
             
             raw_pred = row['prediction']
+            if pd.isna(raw_pred):
+                raw_pred = ''
+            else:
+                raw_pred = str(raw_pred)
             code = self.extract_code(raw_pred)
+            raw_output_by_qid[q_id] = raw_pred
+            code_by_qid[q_id] = code
             
             # LCB expects list of codes (for pass@k)
             records.append({
@@ -210,12 +267,46 @@ class LiveCodeBench(TextBaseDataset):
             result = subprocess.run(cmd, capture_output=True, text=True, check=True, cwd=lcb_path)
             output = result.stdout
             logger.info("LCB Evaluator finished successfully.")
+
+            def _rewrite_output_fields(path):
+                if not os.path.exists(path):
+                    return False
+                try:
+                    with open(path, 'r') as f:
+                        data = json.load(f)
+                    if not isinstance(data, list):
+                        return False
+                    for item in data:
+                        if not isinstance(item, dict):
+                            continue
+                        qid = str(item.get('question_id', ''))
+                        raw_text = raw_output_by_qid.get(qid, '')
+                        code_text = code_by_qid.get(qid, '')
+                        item['output_list'] = [raw_text]
+                        item['code_list'] = [code_text]
+                    with open(path, 'w') as f:
+                        json.dump(data, f, indent=4)
+                    return True
+                except Exception as e:
+                    logger.warning(f"Failed rewriting output fields for {path}: {e}")
+                    return False
             
             # Parse output from the generated JSON file
             # The evaluator saves to [tmp_path without .json]_codegeneration_output_eval.json
             base_path = tmp_path.rsplit('.json', 1)[0]
+            output_json_path = f"{base_path}_codegeneration_output.json"
             eval_path = f"{base_path}_codegeneration_output_eval.json"
-            
+            eval_all_path = f"{base_path}_codegeneration_output_eval_all.json"
+
+            # Keep output_list as raw model outputs and code_list as extracted code only.
+            _rewrite_output_fields(output_json_path)
+            _rewrite_output_fields(eval_all_path)
+            fixed_root = "/mnt/shared-storage-gpfs2/sciprismax2/guoxingjian/SciEvalKit/output_lcb/output.json"
+            _rewrite_output_fields(fixed_root)
+            _rewrite_output_fields(fixed_root.replace(".json", "_eval_all.json"))
+            # shutil.copy(eval_path, "/mnt/shared-storage-gpfs2/sciprismax2/guoxingjian")
+            #modified
+
             metrics = {}
             if os.path.exists(eval_path):
                 try:
@@ -252,5 +343,3 @@ class LiveCodeBench(TextBaseDataset):
         finally:
              if os.path.exists(tmp_path):
                  os.remove(tmp_path)
-
-

@@ -105,6 +105,8 @@ from .SGI_Bench_1_0.deep_research import SGI_Bench_Deep_Research
 from .SGI_Bench_1_0.dry_experiment import SGI_Bench_Dry_Experiment
 from .SGI_Bench_1_0.wet_experiment import SGI_Bench_Wet_Experiment
 from .SGI_Bench_1_0.idea_generation import SGI_Bench_Idea_Generation
+from .image_mcq import MSEarthMCQ
+# from .mol_instructions import Mol_Instructions  # disabled: requires rouge_score/evaluate
 
 class ConcatDataset(ImageBaseDataset):
     # This dataset takes multiple dataset names as input and aggregate them into a single dataset.
@@ -251,7 +253,7 @@ IMAGE_DATASET = [
     MMEReasoning, GOBenchDataset, SFE, EarthSE, ChartMimic, MMVMBench, XLRSBench,
     OmniEarthMCQBench, VisFactor, OSTDataset, OCRBench_v2, TreeBench, CVQA, M4Bench,
     AyaVisionBench, TopViewRS, VLMBias, MMHELIX, MedqbenchMCQDataset,
-    MedqbenchPairedDescriptionDataset, MedqbenchCaptionDataset, SLAKE_EN_TEST, Clima_QA, ChemBench, SGI_Bench_Experimental_Reasoning
+    MedqbenchPairedDescriptionDataset, MedqbenchCaptionDataset, SLAKE_EN_TEST, Clima_QA, ChemBench, SGI_Bench_Experimental_Reasoning,MSEarthMCQ
 ]
 
 VIDEO_DATASET = [
@@ -269,7 +271,7 @@ VIDEO_DATASET = [
 TEXT_DATASET = [
     TextMCQDataset,ResearchbenchGenerate,ResearchbenchRank,ResearchbenchRetrieve, PHYSICS, MaScQA, SciCode, ProteinLMBench, TRQA, AstroVisBench , CMPhysBench,
     SGI_Bench_Wet_Experiment,SGI_Bench_Dry_Experiment,SGI_Bench_Deep_Research,SGI_Bench_Idea_Generation, FrontierScience_Olympiad, FrontierScience_Research,
-    LiveCodeBench, BrowseCompZH
+    LiveCodeBench, BrowseCompZH,
 ]
 
 CUSTOM_DATASET = [

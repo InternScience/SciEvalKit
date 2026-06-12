@@ -111,9 +111,13 @@ class OpenAIWrapper(BaseAPI):
                 env_key = os.environ.get('OPENAI_API_KEY', '')
                 if key is None:
                     key = env_key
-                assert isinstance(key, str) and key.startswith('sk-'), (
-                    f'Illegal openai_key {key}. '
-                    'Please set the environment variable OPENAI_API_KEY to your openai key. '
+                # Accept any non-empty string key. The 'sk-' prefix check was an
+                # OpenAI-only convention that breaks for OpenAI-compatible
+                # endpoints with UUID / internal-token keys (e.g. local vLLM,
+                # ailab-ma4tool, pjh-service deployments).
+                assert isinstance(key, str) and key.strip(), (
+                    f'Illegal openai_key {key!r}. '
+                    'Please set the environment variable OPENAI_API_KEY to a non-empty token. '
                 )
 
         self.key = key
@@ -201,13 +205,14 @@ class OpenAIWrapper(BaseAPI):
             input_msgs.append(dict(role='user', content=self.prepare_itlist(inputs)))
         return input_msgs
 
+    # Original generate_inner (kept for reference).
     def generate_inner(self, inputs, **kwargs) -> str:
         input_msgs = self.prepare_inputs(inputs)
         temperature = kwargs.pop('temperature', self.temperature)
         max_tokens = kwargs.pop('max_tokens', self.max_tokens)
         stream = kwargs.pop('stream', self.stream)
-
-
+    
+    
         # Will send request if use Azure, dk how to use openai client for it
         if self.use_azure:
             headers = {'Content-Type': 'application/json', 'api-key': self.key}
@@ -217,7 +222,6 @@ class OpenAIWrapper(BaseAPI):
             headers = {'Content-Type': 'application/json', 'Authorization': f'Bearer {self.key}'}
         if hasattr(self, 'baidu_appid'):
             headers['appid'] = self.baidu_appid
-
         payload = dict(
             model=self.model,
             messages=input_msgs,
@@ -225,27 +229,39 @@ class OpenAIWrapper(BaseAPI):
             temperature=temperature,
             stream = stream,
             **kwargs)
-
+    
         if self.is_max_completion_tokens:
             payload['max_completion_tokens'] = max_tokens
             payload.pop('temperature')
         else:
             payload['max_tokens'] = max_tokens
-
+    
         if 'gemini' in self.model:
             payload.pop('max_tokens')
             payload.pop('n')
             payload['reasoning_effort'] = 'high'
-
+    
         response = requests.post(
             self.api_base,
             headers=headers, data=json.dumps(payload), timeout=self.timeout * 1.1,
             stream=stream,
             verify=False
         )
-
+        if response.status_code >= 400:
+            req_id = response.headers.get('x-request-id', response.headers.get('request-id', 'N/A'))
+            print(
+                f'[SciEvalKit][HTTP {response.status_code}] {response.reason} | URL={self.api_base} '
+                f'| Model={self.model} | Request-ID={req_id}',
+                file=sys.stderr,
+                flush=True
+            )
+            print(
+                f'[SciEvalKit][HTTP {response.status_code}] Raw response body: {response.text}',
+                file=sys.stderr,
+                flush=True
+            )    
         response.raise_for_status()
-
+    
         full_answer = ""
         if stream:
             for line in response.iter_lines():
@@ -268,9 +284,9 @@ class OpenAIWrapper(BaseAPI):
                 full_answer = resp_json['choices'][0]['message']['content']
             except Exception as e:
                 raise ValueError(f"Failed to parse non-stream response: {e}. Raw response: {response.text}")
-
+    
         return 0, full_answer, "Success"
-
+    
     def get_image_token_len(self, img_path, detail='low'):
         import math
         if detail == 'low':

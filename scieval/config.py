@@ -110,16 +110,17 @@ o1_apis = {
         verbose=False,
     ),
     'o4-mini': partial(
-        GPT4V, 
-        model="o4-mini-2025-04-16",
+        GPT4V,
+        model="o4-mini",
         key=o1_key,
-        api_base=o1_base, 
+        api_base=o1_base,
         temperature=0,
         img_detail='high',
         retry=3,
         timeout=1800,
         max_tokens=16384,
         verbose=False,
+        stream=False,
     ),
 }
 
