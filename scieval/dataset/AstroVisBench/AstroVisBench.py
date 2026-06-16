@@ -129,7 +129,11 @@ class AstroVisBench(ImageVQADataset):
             print(f"Error loading evaluation file {eval_file}: {e}")
             return
 
-        all_evaluation_results = []
+        # Keyed by uid to avoid double-counting: the scheduler's 600s wall-timeout
+        # can append a Timeout record for a task whose worker also queued a real
+        # result (race), inflating the task count. Real queue results overwrite;
+        # timeout/crash placeholders are only kept if no real result exists.
+        results_by_uid = {}
         os.makedirs(self.true_cache_path, exist_ok=True)
         os.makedirs(self.gen_cache_path, exist_ok=True)
 
@@ -181,12 +185,15 @@ class AstroVisBench(ImageVQADataset):
                     print(f"Task {uid} timed out. Killing...")
                     if p.is_alive():
                         p.terminate()
-                        p.join()
+                        p.join(timeout=30)
+                        if p.is_alive():
+                            p.kill()
+                            p.join(timeout=5)
 
                     err_res = proc_info['task_dict'].copy()
                     err_res['processing_test'] = {'error': 'Timeout', 'pro_success': False}
-                    all_evaluation_results.append(err_res)
-                    
+                    results_by_uid.setdefault(uid, err_res)
+
                     running_procs.pop(i)
                     pbar.update(1)
                     continue
@@ -198,7 +205,7 @@ class AstroVisBench(ImageVQADataset):
                         print(f"Task {uid} crashed with exit code {p.exitcode} (Segfault).")
                         err_res = proc_info['task_dict'].copy()
                         err_res['processing_test'] = {'error': f'Process crashed (Exit code: {p.exitcode})', 'pro_success': False}
-                        all_evaluation_results.append(err_res)
+                        results_by_uid.setdefault(uid, err_res)
 
                     running_procs.pop(i)
                     pbar.update(1)
@@ -207,7 +214,7 @@ class AstroVisBench(ImageVQADataset):
                 try:
                     res = result_queue.get_nowait()
                     if res['status'] == 'success':
-                        all_evaluation_results.append(res['data'])
+                        results_by_uid[res['task_id']] = res['data']
                     else:
                         pass
                 except:
@@ -216,6 +223,8 @@ class AstroVisBench(ImageVQADataset):
             time.sleep(0.1)
 
         pbar.close()
+
+        all_evaluation_results = list(results_by_uid.values())
 
         print("Saving evaluation results to josnl file...")
         try:
@@ -323,8 +332,13 @@ class AstroVisBench(ImageVQADataset):
             
             task_idx = 0
 
+            # Guard against double-counting a uid (scheduler timeout racing with a
+            # queued worker result). Seeded with already-finished uids so resume
+            # never re-appends them.
+            processed_uids = set(finished_uids)
+
             with open(vis_exec_output_filename, 'a') as f_out:
-                
+
                 while task_idx < len(pending_tasks) or len(running_procs) > 0:
 
                     while len(running_procs) < MAX_WORKERS and task_idx < len(pending_tasks):
@@ -344,7 +358,12 @@ class AstroVisBench(ImageVQADataset):
 
                         if time.time() - proc_info['start_time'] > 600:
                             print(f"Vis Task {uid} timed out. Killing...")
-                            if p.is_alive(): p.terminate(); p.join()
+                            if p.is_alive():
+                                p.terminate()
+                                p.join(timeout=30)
+                                if p.is_alive():
+                                    p.kill()
+                                    p.join(timeout=5)
                             error_result = proc_info['task_dict'].copy()
                             error_result['visualization_test'] = {'error': 'Timeout', 'vis_success': False, 'gen_vis_list': []}
 
@@ -358,12 +377,13 @@ class AstroVisBench(ImageVQADataset):
                                 pass
 
                         if error_result:
-                            f_out.write(json.dumps(error_result, default=str) + '\n')
-                            f_out.flush()
-                            vis_exec_results_new.append(error_result)
-                            
+                            if uid not in processed_uids:
+                                f_out.write(json.dumps(error_result, default=str) + '\n')
+                                f_out.flush()
+                                vis_exec_results_new.append(error_result)
+                                processed_uids.add(uid)
+                                pbar.update(1)
                             running_procs.pop(i)
-                            pbar.update(1)
                         elif not p.is_alive():
 
                             running_procs.pop(i)
@@ -371,8 +391,9 @@ class AstroVisBench(ImageVQADataset):
                     while not result_queue.empty():
                         try:
                             res = result_queue.get_nowait()
+                            done_uid = res.get('task_id')
                             final_data = None
-                            
+
                             if res['status'] == 'success':
                                 final_data = res['data']
                             else:
@@ -380,16 +401,17 @@ class AstroVisBench(ImageVQADataset):
                                 if err_task_dict:
                                     final_data = err_task_dict.copy()
                                     final_data['visualization_test'] = {'error': res['error'], 'vis_success': False, 'gen_vis_list': []}
-                            
-                            if final_data:
+
+                            if final_data and done_uid not in processed_uids:
                                 f_out.write(json.dumps(final_data, default=str) + '\n')
                                 f_out.flush()
-                                
+
                                 vis_exec_results_new.append(final_data)
+                                processed_uids.add(done_uid)
                                 pbar.update(1)
                         except Exception:
                             break
-                    
+
                     time.sleep(0.1)
 
             pbar.close()

@@ -221,9 +221,15 @@ class AstroVisBench:
     """
     @classmethod
     def supported_datasets(cls):
-        return ['AstroVisBench']
-    TYPE = 'MCQ'
-    MODALITY = 'TEXT'
+        return ['AstroVisBench_Processing', 'AstroVisBench_Visualization']
+    TYPE = 'QA'
+    MODALITY = 'IMAGE'
+
+    # Declares `dataset` in the signature so run.py's inspect-based param
+    # filtering keeps it; the body never runs because __new__ returns a
+    # different class instance.
+    def __init__(self, dataset, *args, **kwargs):
+        pass
 
     def __new__(cls, *args, **kwargs):
         try:
@@ -233,6 +239,16 @@ class AstroVisBench:
             import warnings
             warnings.warn(f"Failed to load AstroVisBench. Dependencies missing? Error: {e}")
             raise e
+        finally:
+            # Importing the submodule `scieval.dataset.AstroVisBench` rebinds the
+            # package attribute `AstroVisBench` to the MODULE, shadowing this stub
+            # class. run.py reads `cls.MODALITY`/`cls.TYPE` off that attribute for
+            # every data entry, so the 2nd entry (Visualization) would hit the
+            # module and raise AttributeError. Restore the stub class binding.
+            import sys
+            _pkg = sys.modules.get('scieval.dataset')
+            if _pkg is not None:
+                setattr(_pkg, cls.__name__, cls)
 
 # Add new supported dataset class here
 IMAGE_DATASET = [
