@@ -170,6 +170,10 @@ class SFE(ImageVQADataset):
 
     def evaluate(self, eval_file, **judge_kwargs):
         data = load(eval_file)
+        # PRED_FORMAT=json round-trips DataFrames as list[dict]; coerce back so
+        # downstream column ops (`'answer' in data`, `data['prediction'] = ...`) work.
+        if not isinstance(data, pd.DataFrame):
+            data = pd.DataFrame(data)
         _ = self.dataset_name
         assert 'answer' in data and 'prediction' in data
         data['prediction'] = [str(x) for x in data['prediction']]
@@ -216,6 +220,9 @@ class SFE(ImageVQADataset):
             data['score'] = [x['score'] for x in judge_results]
             dump(data, storage)
         data = load(storage)
+        # PRED_FORMAT=json round-trips DataFrames as list[dict]; coerce back.
+        if not isinstance(data, pd.DataFrame):
+            data = pd.DataFrame(data)
         score = report_score(data)
 
         score_file = get_intermediate_file_path(eval_file, '_score', 'csv')

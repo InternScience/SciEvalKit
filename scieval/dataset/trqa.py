@@ -229,6 +229,10 @@ class TRQA(TextMCQDataset):
             data = pd.read_csv(eval_file)
         else:
             data = load(eval_file)
+            # PRED_FORMAT=json round-trips DataFrames as list[dict]; coerce back
+            # so downstream .columns / column ops work uniformly.
+            if not isinstance(data, pd.DataFrame):
+                data = pd.DataFrame(data)
 
         # Standardize column names (handle case variations)
         data.columns = data.columns.str.strip()
@@ -320,6 +324,9 @@ class TRQA(TextMCQDataset):
 
         # reload judged data
         data = load(storage)
+        # PRED_FORMAT=json round-trips DataFrames as list[dict]; coerce back.
+        if not isinstance(data, pd.DataFrame):
+            data = pd.DataFrame(data)
 
         # simple accuracy report
         acc = np.mean(data['hit']) * 100.0
