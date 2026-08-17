@@ -1738,6 +1738,12 @@ logics_series = {
     "Logics-Thinking-32B": partial(Logics_Thinking,model_path='Logics-MLLM/Logics-Thinking-32B'),
 }
 
+granite_docling_series = {
+    "granite-docling-258M": partial(
+        GraniteDocling, model_path="ibm-granite/granite-docling-258M"
+    ),
+}
+
 
 
 internvl_groups = [
@@ -1762,7 +1768,8 @@ model_groups = [
     aria_series, smolvlm_series, sail_series, valley_series, vita_series,
     ross_series, emu_series, ola_series, ursa_series, gemma_series,
     long_vita_series, ristretto_series, kimi_series, aguvis_series, hawkvl_series, 
-    flash_vl, kimi_vllm_series, oryx_series, treevgr_series, varco_vision_series, qtunevl_series, xvl_series, thyme_series,logics_series,
+    flash_vl, kimi_vllm_series, oryx_series, treevgr_series, varco_vision_series, qtunevl_series, xvl_series,
+    thyme_series, logics_series, granite_docling_series,
 ]
 
 for grp in model_groups:
