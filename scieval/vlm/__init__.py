@@ -110,3 +110,4 @@ from .qtunevl import (
     QTuneVLChat,
 )
 from .logics import Logics_Thinking
+from .liquid import LFM2VL
