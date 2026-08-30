@@ -6,7 +6,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from datasets import load_dataset
+from typing import Dict, List
 
 import numpy as np
 
@@ -15,11 +15,18 @@ import numpy as np
 # package without requiring installation of a top-level ``scicode`` package.
 from .parse import H5PY_FILE  # type: ignore
 from .parse import read_from_hf_dataset  # type: ignore
+from .protocol import (
+    OFFICIAL_TEST_PROBLEM_COUNT,
+    OFFICIAL_TEST_STEP_COUNT,
+    OFFICIAL_VALIDATION_PROBLEM_COUNT,
+    OFFICIAL_VALIDATION_STEP_COUNT,
+    is_official_scored_step,
+)
 
 PROB_NUM = 80
-DEV_PROB_NUM = 15
-STEP_NUM = sum(len(p["sub_steps"]) for p in load_dataset("SciCode1/SciCode", split="test"))
-DEV_STEP_NUM = 50
+DEV_PROB_NUM = OFFICIAL_VALIDATION_PROBLEM_COUNT
+STEP_NUM = OFFICIAL_TEST_STEP_COUNT
+DEV_STEP_NUM = OFFICIAL_VALIDATION_STEP_COUNT
 
 
 def _get_background_dir(with_background: bool) -> str:
@@ -82,6 +89,8 @@ def test_code(
             file_name = file_path.stem
             file_id = file_name.split(".")[0]
             file_step = file_name.split(".")[1]
+            if not is_official_scored_step(split, file_id, int(file_step)):
+                continue
 
             code_content = file_path.read_text(encoding="utf-8")
             # Strip placeholder error lines to avoid syntax errors in tmp scripts
@@ -205,7 +214,7 @@ process_hdf5_to_tuple = _parse_mod.process_hdf5_to_tuple  # noqa: F401, E402
 
     print(
         f"correct problems: {correct_prob_num}/"
-        f"{DEV_PROB_NUM if (split == 'validation') else PROB_NUM - DEV_PROB_NUM}"
+        f"{DEV_PROB_NUM if (split == 'validation') else OFFICIAL_TEST_PROBLEM_COUNT}"
     )
     print(
         f"correct steps: {len(correct_step)}/"
@@ -220,7 +229,7 @@ process_hdf5_to_tuple = _parse_mod.process_hdf5_to_tuple  # noqa: F401, E402
     ) as f:
         f.write(
             f"correct problems: {correct_prob_num}/"
-            f"{DEV_PROB_NUM if (split == 'validation') else PROB_NUM - DEV_PROB_NUM}\n"
+            f"{DEV_PROB_NUM if (split == 'validation') else OFFICIAL_TEST_PROBLEM_COUNT}\n"
         )
         f.write(
             f"correct steps: {len(correct_step)}/"

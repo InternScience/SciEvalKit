@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Mapping
 
 import pandas as pd
 from datasets import load_dataset
@@ -7,6 +7,13 @@ from datasets import load_dataset
 from scieval.smp import load
 
 from ..text_base import TextBaseDataset
+from .protocol import (
+    OFFICIAL_EXCLUDED_TEST_STEPS,
+    is_official_scored_step,
+    make_step_id,
+    official_dependency_code,
+    extract_python_script,
+)
 
 
 class SciCode(TextBaseDataset):
@@ -20,7 +27,7 @@ class SciCode(TextBaseDataset):
 
     Parameters
     ----------
-    split : {"validation","test"}, default "validation"
+    split : {"validation","test"}, default "test"
         Which split to load from the HF dataset `SciCode1/SciCode`.
     with_background : bool, default True
         Whether to include the optional scientific background in prompts.
@@ -29,9 +36,17 @@ class SciCode(TextBaseDataset):
     TYPE = "TEXT"
     MODALITY = "TEXT"
     dataset_name = "SciCode"
+    # The output of an earlier sub-step is part of every later prompt in the
+    # same problem.  ``scieval.inference`` uses this marker to schedule steps
+    # in dependency order instead of flattening all 288 requests at once.
+    SEQUENTIAL_INFERENCE = True
 
     def __init__(
-        self, split: str = "test", with_background: bool = True, dataset: str = "SciCode", **kwargs
+        self,
+        split: str = "test",
+        with_background: bool = True,
+        dataset: str = "SciCode",
+        **kwargs,
     ) -> None:
         # Save flags first; TextBaseDataset.__init__ will call self.load_data()
         self.split = split
@@ -77,12 +92,15 @@ class SciCode(TextBaseDataset):
             subs = prob["sub_steps"]
             total = len(subs)
             for s_idx, _ in enumerate(subs):
+                step_num = s_idx + 1
+                if not is_official_scored_step(self.split, pid, step_num):
+                    continue
                 rows.append(
                     {
                         "index": idx,
-                        "id": f"{pid}.{s_idx+1}",
+                        "id": make_step_id(pid, step_num),
                         "problem_id": pid,
-                        "step": s_idx + 1,
+                        "step": step_num,
                         "tot_steps": total,
                         "record": prob,
                     }
@@ -92,23 +110,58 @@ class SciCode(TextBaseDataset):
 
     # ---- Prompt construction ----------------------------------------------
     def build_prompt(self, line: pd.Series) -> List[Dict[str, str]]:
-        """Construct the text prompt for one sub-step item."""
+        """Construct a prompt without generated context.
+
+        Generic callers use this entry point.  Real SciCode inference calls
+        :meth:`build_prompt_with_context` so later steps receive the model code
+        generated for earlier steps, matching the upstream/AA protocol.
+        """
+
+        return self.build_prompt_with_context(line, {})
+
+    def build_prompt_with_context(
+        self,
+        line: pd.Series,
+        previous_predictions: Mapping[int, object],
+    ) -> List[Dict[str, str]]:
+        """Construct one sub-step prompt with prior model implementations.
+
+        ``previous_predictions`` is keyed by one-based step number and contains
+        raw model responses.  The three unscored dependency-only test steps are
+        filled from the scientist-curated implementations shipped by SciCode.
+        """
+
         if isinstance(line, int):
             line = self.data.iloc[line]
         record = line["record"]
         step_idx = int(line["step"]) - 1
 
-        # Previous steps summary
+        # Previous descriptions and generated function code.  The separator
+        # and ordering deliberately mirror upstream process_problem_steps().
         prev_lines: List[str] = []
         for i in range(step_idx):
             sub = record["sub_steps"][i]
             if self.with_background:
-                prev_lines.append(
+                previous_description = (
                     f"{sub['step_description_prompt']}\n{sub.get('step_background', '')}"
                 )
             else:
-                prev_lines.append(sub["step_description_prompt"])
-        problem_steps_str = "\n\n".join(prev_lines)
+                previous_description = sub["step_description_prompt"]
+
+            one_based_step = i + 1
+            step_id = make_step_id(record["problem_id"], one_based_step)
+            if (
+                self.split == "test"
+                and step_id in OFFICIAL_EXCLUDED_TEST_STEPS
+            ):
+                previous_code = official_dependency_code(step_id)
+            else:
+                previous_code = extract_python_script(
+                    previous_predictions.get(one_based_step)
+                )
+
+            prev_lines.extend([previous_description, previous_code, "------"])
+        problem_steps_str = "\n\n".join(prev_lines[:-1]) if prev_lines else ""
 
         # Next step description + header/return stub
         cur = record["sub_steps"][step_idx]
@@ -213,26 +266,11 @@ class SciCode(TextBaseDataset):
                 prob_to_record[pid] = row["record"]
 
         def _clean(code: str) -> str:
-            """Remove markdown fences and skip placeholder error strings."""
-            if not isinstance(code, str):
+            """Apply the same extraction used for multi-step prompt context."""
+
+            if isinstance(code, str) and "Error:" in code:
                 return ""
-
-            # 1) Strip markdown triple‑backtick fences
-            if "```" in code:
-                try:
-                    code = code.split("```python")[-1].split("```")[0]
-                except Exception:
-                    code = code.replace("```", "")
-
-            # 2) If the LLM failed, the API wrapper may return an error message
-            error_tokens = [
-                "Failed to obtain answer via API.",
-                "Error:" ,  # empty assistant message markers
-            ]
-            for tok in error_tokens:
-                if tok in code:
-                    return ""  # treat as empty code so test counts as fail, not SyntaxError
-            return code
+            return extract_python_script(code)
 
         # 4) Group predictions by problem and step (so we can prepend previous steps' code)
         prob_to_steps: Dict[str, Dict[int, str]] = {}
@@ -244,6 +282,8 @@ class SciCode(TextBaseDataset):
         for uid, _ in preds.items():
             prob_id, step_str = uid.split(".")
             step_num = int(step_str)
+            if not is_official_scored_step(self.split, prob_id, step_num):
+                continue
             record = prob_to_record.get(prob_id)
 
             pieces: List[str] = []
@@ -263,7 +303,17 @@ class SciCode(TextBaseDataset):
 
             # previous steps
             for s in range(1, step_num):
-                prev_code = prob_to_steps.get(prob_id, {}).get(s)
+                prev_step_id = make_step_id(prob_id, s)
+                if (
+                    self.split == "test"
+                    and prev_step_id in OFFICIAL_EXCLUDED_TEST_STEPS
+                ):
+                    # The official protocol does not ask the model to generate
+                    # these three dependency-only steps.  It injects the
+                    # scientist-curated implementation for downstream steps.
+                    prev_code = official_dependency_code(prev_step_id)
+                else:
+                    prev_code = prob_to_steps.get(prob_id, {}).get(s)
                 if prev_code:
                     pieces.append(prev_code)
             # current step

@@ -1,5 +1,8 @@
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
+
 import torch
 import torch.distributed as dist
+from tqdm import tqdm
 from scieval.config import supported_VLM
 from scieval.utils import track_progress_rich
 from scieval.smp import *
@@ -18,7 +21,131 @@ def parse_args():
 
 
 # Only API model is accepted
-def infer_data_api(model, work_dir, model_name, dataset, index_set=None, api_nproc=4, ignore_failed=False, **kwargs):
+def _is_failed_prediction(value):
+    text = "" if value is None else str(value).strip()
+    return not text or text.lower() == "nan" or FAIL_MSG in text
+
+
+def _previous_predictions(data, row, results):
+    """Return raw prior-step responses for one sequential benchmark row."""
+
+    problem_rows = data[
+        (data["problem_id"] == row["problem_id"])
+        & (data["step"] < row["step"])
+    ].sort_values("step")
+    previous = {}
+    for _, previous_row in problem_rows.iterrows():
+        previous_index = previous_row["index"]
+        if previous_index not in results:
+            raise RuntimeError(
+                "Sequential inference cannot generate "
+                f"{row.get('id', row['index'])} before prior step "
+                f"{previous_row.get('id', previous_index)}"
+            )
+        previous[int(previous_row["step"])] = results[previous_index]
+    return previous
+
+
+def _infer_data_api_sequential(
+    model,
+    work_dir,
+    model_name,
+    dataset,
+    index_set,
+    api_nproc,
+    ignore_failed,
+    existing_results,
+    **kwargs,
+):
+    """Infer dependency-ordered steps while parallelizing independent problems.
+
+    SciCode later-step prompts contain the code generated for all earlier
+    steps.  At most one request per problem is in flight; once it completes,
+    the next step for that problem is submitted.  Independent problems remain
+    concurrent and progress is still reported over all subproblems.
+    """
+
+    dataset_name = dataset.dataset_name
+    data = dataset.data
+    target_data = data if index_set is None else data[data["index"].isin(index_set)]
+    target_indices = list(target_data["index"])
+    result_file = f"{work_dir}/{model_name}_{dataset_name}_sequential_supp.pkl"
+
+    persisted = load(result_file) if osp.exists(result_file) else {}
+    if ignore_failed:
+        persisted = {
+            index: value
+            for index, value in persisted.items()
+            if not _is_failed_prediction(value)
+        }
+
+    results = dict(existing_results or {})
+    results.update(persisted)
+
+    pending_data = target_data[~target_data["index"].isin(results)]
+    queues = {
+        problem_id: [row for _, row in rows.sort_values("step").iterrows()]
+        for problem_id, rows in pending_data.groupby("problem_id", sort=False)
+    }
+
+    def submit_next(executor, problem_id, futures):
+        if not queues[problem_id]:
+            return
+        row = queues[problem_id].pop(0)
+        previous = _previous_predictions(data, row, results)
+        message = dataset.build_prompt_with_context(row, previous)
+        future = executor.submit(
+            model.generate,
+            message=message,
+            dataset=dataset_name,
+            **kwargs,
+        )
+        futures[future] = (problem_id, row["index"])
+
+    if len(pending_data):
+        worker_count = min(api_nproc, len(queues))
+        with ThreadPoolExecutor(max_workers=worker_count) as executor:
+            futures = {}
+            for problem_id in queues:
+                submit_next(executor, problem_id, futures)
+
+            progress = tqdm(total=len(pending_data))
+            try:
+                while futures:
+                    completed, _ = wait(futures, return_when=FIRST_COMPLETED)
+                    for future in completed:
+                        problem_id, index = futures.pop(future)
+                        response = future.result()
+                        results[index] = response
+                        persisted[index] = response
+                        progress.update(1)
+                        submit_next(executor, problem_id, futures)
+                    dump(persisted, result_file)
+            finally:
+                progress.close()
+
+    missing = [index for index in target_indices if index not in results]
+    if missing:
+        raise RuntimeError(
+            f"Sequential inference finished with {len(missing)} missing predictions"
+        )
+
+    if osp.exists(result_file):
+        os.remove(result_file)
+    return {index: results[index] for index in target_indices}
+
+
+def infer_data_api(
+    model,
+    work_dir,
+    model_name,
+    dataset,
+    index_set=None,
+    api_nproc=4,
+    ignore_failed=False,
+    existing_results=None,
+    **kwargs,
+):
     rank, world_size = get_rank_and_world_size()
     assert rank == 0 and world_size == 1
     dataset_name = dataset.dataset_name
@@ -30,6 +157,24 @@ def infer_data_api(model, work_dir, model_name, dataset, index_set=None, api_npr
     assert getattr(model, 'is_api', False)
     if hasattr(model, 'set_dump_image'):
         model.set_dump_image(dataset.dump_image)
+
+    if getattr(dataset, "SEQUENTIAL_INFERENCE", False):
+        if not hasattr(dataset, "build_prompt_with_context"):
+            raise TypeError(
+                f"{dataset_name} enables sequential inference without "
+                "build_prompt_with_context()"
+            )
+        return _infer_data_api_sequential(
+            model=model,
+            work_dir=work_dir,
+            model_name=model_name,
+            dataset=dataset,
+            index_set=index_set,
+            api_nproc=api_nproc,
+            ignore_failed=ignore_failed,
+            existing_results=existing_results,
+            **kwargs,
+        )
 
     lt, indices = len(data), list(data['index'])
 
@@ -134,6 +279,7 @@ def infer_data(model, model_name, work_dir, dataset, out_file, verbose=False, ap
             dataset=dataset,
             index_set=set(indices),
             api_nproc=api_nproc,
+            existing_results=res,
             **kwargs
         )
         for idx in indices:
@@ -150,7 +296,10 @@ def infer_data(model, model_name, work_dir, dataset, out_file, verbose=False, ap
         if idx in res:
             continue
 
-        if hasattr(model, 'use_custom_prompt') and model.use_custom_prompt(dataset_name):
+        if getattr(dataset, "SEQUENTIAL_INFERENCE", False):
+            previous = _previous_predictions(dataset.data, data.iloc[i], res)
+            struct = dataset.build_prompt_with_context(data.iloc[i], previous)
+        elif hasattr(model, 'use_custom_prompt') and model.use_custom_prompt(dataset_name):
             struct = model.build_prompt(data.iloc[i], dataset=dataset_name)
         else:
             struct = dataset.build_prompt(data.iloc[i])
